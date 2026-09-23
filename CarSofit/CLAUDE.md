@@ -11,10 +11,11 @@ Proyecto nuevo, independiente de la antigua web de cocina.
 - Móviles: Carlos Android (Samsung S24 Ultra, Chrome) · Sofía iPhone (Safari → Compartir → Añadir a pantalla de inicio).
 
 ## Perfiles
-- Carlos: 28 años, 176 cm, hombre, 91 kg (23/09/2026), actividad sedentaria-moderada.
+- Carlos: 28 años, 183 cm, hombre, 91 kg (23/09/2026), actividad sedentaria-moderada. Aspecto: complexión media, media barba, pelo rizado con degradado a los lados.
   Objetivo: perder grasa y peso, tonificar. Fascitis plantar: sin saltos; progresión andar → correr.
   No le gusta: coliflor, judías verdes, salmón ahumado.
-- Sofía: nacida el 9/10/1999 (edad calculada sola), 160 cm, mujer, 60 kg (23/09/2026). Objetivo: comer bien y evitar brotes de colitis.
+- Sofía: nacida el 9/10/1999 (edad calculada sola), 160 cm, mujer, 60 kg (23/09/2026). Objetivo: comer bien y evitar brotes de colitis. Aspecto: gafas, melena corta (en el 3D, con coleta).
+- Trabajan en el hospital y llegan a casa a las 15:00: las comidas de diario van en tupper (preparadas la tarde anterior o en batch cooking, se calientan en el microondas). La cena puede ser más elaborada.
   Intolerancia a la fructosa + colitis inespecífica. No le gusta la comida cruda o poco hecha.
 - Los dos: berenjena al vapor o en guiso no; frita/crujiente sí.
 - Raciones distintas para cada uno: la app escala cada plato al objetivo calórico de cada persona.
@@ -47,7 +48,8 @@ Juego de mancuernas de 20 kg, bandas, esterilla, zapatillas. Nada de gimnasio. 4
 ## Supabase (proyecto `carsofit`, ref jlkjvopynizxpvaxwdqr, región eu-west-3)
 - `miembros` (email, persona): lista de correos autorizados. Solo ellos leen y escriben (RLS con `privado.es_miembro()`).
   Al registrarse, un correo de la lista queda confirmado automáticamente (trigger `privado.autoconfirmar_miembro`).
-- `estado` (clave, valor jsonb): claves week, shop, extras, done, profiles, dishes, sessions, eaten. Compartido y en tiempo real.
+- `estado` (clave, valor jsonb): claves week, shop, extras, done, profiles, dishes, sessions, eaten, prefs, plan, weekStart.
+  `prefs` = {tupper, tupperDays}. `plan` = semanas distintas de la actual por lunes (AAAA-MM-DD) → {days, dishes} (o {gen} mientras la IA la prepara). `weekStart` = lunes de la semana actual: al empezar una semana nueva, la app archiva la anterior en plan y pone como actual la preparada (rollWeek). Desde el jueves se prepara sola la semana siguiente (autoNextWeek). Compartido y en tiempo real.
   `eaten` = comidas fuera de plan por persona: clave "persona|AAAA-MM-DD|franja" → {name, kcal, p, c, g, f, nota, desc, plan}.
 - `mediciones` (persona, fecha, peso, grasa) · única por persona y día.
 - `sintomas` (persona, fecha, franja, plato_id, plato_nombre, malestar 0-10, sintomas[], nota) · diario digestivo por comida.
@@ -65,4 +67,6 @@ Juego de mancuernas de 20 kg, bandas, esterilla, zapatillas. Nada de gimnasio. 4
 6. [x] Comido fuera de plan (acción `comido`): desde el detalle de un plato de hoy o de días pasados, «¿Has comido otra cosa?». La IA estima kcal y macros y da una valoración; sustituye el plato solo para esa persona y reajusta las raciones del resto de su día (factor limitado a 0,5-1,8). La lista de la compra usa las raciones del plan.
 7. [x] Emojis discretos en platos (en lugar de las letras D/C/N/T) y ejercicios; botón «Ver cómo se hace» con el muñeco 3D.
 8. [x] Personas 3D realistas (hombre/mujer según quien use la app), sesión de pilates de Sofía detallada (10 ejercicios con animación), paso a paso de cada ejercicio y registro de pesos con comparativa.
-9. [x] Publicada en GitHub Pages: https://carlitoseh.github.io/CarSoFit/CarSofit/ (repo carlitoseh/CarSoFit, archivos dentro de la subcarpeta CarSofit/).
+9. [x] Personas 3D a medida: Carlos 1,83 m con rizos y degradado (casquetes y rizos generados en código) y media barba (capa con transparencia por vértice sobre la cara); Sofía 1,60 m sin el pelo afro ni auriculares del modelo original (se quitan triángulos), con coleta, gafas y ojos (el modelo traía gafas de sol).
+10. [x] Modo tupper (Menú → «Comidas para llevar»): la IA crea las comidas de los días elegidos con prep, nevera y recalentar. Calendario mensual (Menú → Mes) con el menú de cada día y generación automática de la semana siguiente.
+11. [x] Publicada en GitHub Pages: https://carlitoseh.github.io/CarSoFit/CarSofit/ (repo carlitoseh/CarSoFit, archivos dentro de la subcarpeta CarSofit/).

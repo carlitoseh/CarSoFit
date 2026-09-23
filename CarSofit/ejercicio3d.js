@@ -3,6 +3,7 @@
 // El músculo trabajado brilla en rojo, se ve el material (mancuernas, banda, cajón, toalla, silla, esterilla, pared) y se gira arrastrando.
 import * as THREE from "./vendor/three.module.min.js";
 import { GLTFLoader } from "./vendor/GLTFLoader.js";
+import { mergeGeometries } from "./vendor/BufferGeometryUtils.js";
 
 const D = Math.PI / 180;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -181,7 +182,11 @@ function sample(A, t) {
 }
 
 // ---------- Personas realistas ----------
-const MODEL = { carlos: { file: "modelos/carlos.glb", h: 1.76 }, sofia: { file: "modelos/sofia.glb", h: 1.6 } };
+// Aspecto de cada uno: altura, complexión y peinado
+const MODEL = {
+  carlos: { file: "modelos/carlos.glb", h: 1.83, wide: 1.05, hair: "rizos", beard: true },
+  sofia: { file: "modelos/sofia.glb", h: 1.6, wide: 1.02, hair: "coleta", glasses: true, strip: true },
+};
 const buffers = {};
 function modelBuffer(who) {
   if (!buffers[who]) buffers[who] = fetch(new URL(MODEL[who].file, import.meta.url)).then((r) => {
@@ -247,6 +252,14 @@ function rigHuman(gltf, who) {
   }
   aim(root, B.Spine, B.Spine1, up); aim(root, B.Spine1, B.Spine2, up); aim(root, B.Spine2, B.Neck, up);
   aim(root, B.Neck, B.Head, up); aim(root, B.Head, B.HeadTop_End, up);
+  const M = MODEL[who];
+  const headMesh = meshes.find((m) => /Wolf3D_Head/.test(m.name)) || meshes[0];
+  const head = headGeom(root, B, headMesh, M.strip);
+  const bb2 = meshBox(meshes, 2), f2 = M.h / (bb2.max.y - bb2.min.y);
+  holder.scale.set(holder.scale.x * f2 * M.wide, holder.scale.y * f2, holder.scale.z * f2 * M.wide);
+  root.updateMatrixWorld(true);
+  holder.position.sub(W(B.Hips));
+  root.updateMatrixWorld(true);
 
   const ctl = (bone) => {
     const P = bone.parent.getWorldQuaternion(new THREE.Quaternion());
@@ -262,7 +275,157 @@ function rigHuman(gltf, who) {
   }
   const rest = meshBox(meshes, 1);
   const toeR = Math.min(W(B.LeftToeBase).y, W(B.RightToeBase).y) - rest.min.y;
-  return { root, B, J, meshes, toeR, k: MODEL[who].h / 1.76, grip: 18 };
+  const H = { root, B, J, meshes, toeR, k: MODEL[who].h / 1.76, grip: 18, headMesh };
+  H.head = headGeom(root, B, headMesh, false);
+  return H;
+}
+
+// ---------- Cabeza: pelo, barba y gafas a medida ----------
+function restPos(mesh) {
+  const n = mesh.geometry.attributes.position.count, out = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { mesh.getVertexPosition(i, _v); _v.applyMatrix4(mesh.matrixWorld); out[i * 3] = _v.x; out[i * 3 + 1] = _v.y; out[i * 3 + 2] = _v.z; }
+  return out;
+}
+function headWeight(mesh, bones) {
+  const ids = bones.filter(Boolean).map((b) => mesh.skeleton.bones.indexOf(b));
+  const si = mesh.geometry.attributes.skinIndex, sw = mesh.geometry.attributes.skinWeight;
+  return (i) => { let w = 0; for (let c = 0; c < 4; c++) if (ids.includes(si.getComponent(i, c))) w += sw.getComponent(i, c); return w; };
+}
+// Nariz, centro y medidas del cráneo (en reposo). Con strip, quita el pelo y los auriculares del modelo original.
+function headGeom(root, B, mesh, strip) {
+  root.updateMatrixWorld(true);
+  const P = restPos(mesh), wH = headWeight(mesh, [B.Head, B.HeadTop_End, B.LeftEye, B.RightEye]), n = P.length / 3;
+  const hy = W(B.Head).y, used = new Uint8Array(n), idx = mesh.geometry.index;
+  for (let t = 0; t < idx.count; t++) used[idx.getX(t)] = 1;
+  const head = []; for (let i = 0; i < n; i++) if (used[i] && wH(i) > 0.5) head.push(i);
+  let N = null;
+  for (const i of head) { const y = P[i * 3 + 1], z = P[i * 3 + 2]; if (y > hy && Math.abs(P[i * 3] - W(B.Head).x) < 0.03 && (!N || z > N.z)) N = { x: P[i * 3], y, z }; }
+  const C = new THREE.Vector3(W(B.Head).x, N.y + 0.035, N.z - 0.1);
+  if (strip) {
+    const out = new Uint8Array(n);
+    for (const i of head) {
+      const x = P[i * 3] - C.x, y = P[i * 3 + 1] - C.y, z = P[i * 3 + 2] - C.z;
+      if (P[i * 3 + 1] > N.y - 0.01 && (x / 0.086) ** 2 + (y / 0.118) ** 2 + (z / 0.112) ** 2 > 1) out[i] = 1;
+      if (Math.abs(x) > 0.09 && P[i * 3 + 1] > N.y - 0.08) out[i] = 1;
+    }
+    // Gafas de sol del modelo original: triángulos rojos delante de los ojos
+    const img = mesh.material?.map?.image, uv = mesh.geometry.attributes.uv;
+    if (img && uv) {
+      const cv = document.createElement("canvas"); cv.width = img.width; cv.height = img.height;
+      const cx = cv.getContext("2d"); cx.drawImage(img, 0, 0); const px = cx.getImageData(0, 0, cv.width, cv.height).data;
+      for (const i of head) {
+        const x = P[i * 3] - C.x, y = P[i * 3 + 1], z = P[i * 3 + 2];
+        if (Math.abs(x) > 0.085 || y < N.y - 0.01 || y > N.y + 0.075 || z < N.z - 0.05) continue;
+        const u = clamp(Math.floor(uv.getX(i) * cv.width), 0, cv.width - 1), v = clamp(Math.floor(uv.getY(i) * cv.height), 0, cv.height - 1), k = (v * cv.width + u) * 4;
+        if (px[k] > 110 && px[k] - px[k + 1] > 40 && px[k] - px[k + 2] > 55) out[i] = 1;
+      }
+    }
+    const keep = [];
+    for (let t = 0; t < idx.count; t += 3) { const a = idx.getX(t), b = idx.getX(t + 1), c = idx.getX(t + 2); if (!(out[a] || out[b] || out[c])) keep.push(a, b, c); }
+    mesh.geometry.setIndex(keep);
+    return null;
+  }
+  // Medidas reales del cráneo por encima de la nariz
+  let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, top = -1e9;
+  for (const i of head) {
+    const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2];
+    if (y > N.y + 0.02) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); top = Math.max(top, y); }
+  }
+  const rx = Math.max(0.07, (x1 - x0) / 2), rz = Math.max(0.09, (z1 - z0) / 2);
+  if (z1 - z0 > 0.17) C.z = (z0 + z1) / 2;
+  C.x = (x0 + x1) / 2;
+  return { N: new THREE.Vector3(N.x, N.y, N.z), C, rx, rz, ry: Math.max(0.09, top - C.y), P, head };
+}
+const HAIR = 0x2B1C12;
+// Casquete del cráneo con el corte inclinado (más alto en la frente, más bajo en la nuca)
+function cap(g, grow, theta, tilt, mat) {
+  const geo = new THREE.SphereGeometry(1, 48, 28, 0, Math.PI * 2, 0, theta * D);
+  geo.rotateX(-tilt * D);
+  const m = new THREE.Mesh(geo, mat); m.scale.set(g.rx * grow, g.ry * grow, g.rz * grow); m.position.copy(g.C); m.castShadow = true;
+  return m;
+}
+function styleHead(H, who) {
+  const M = MODEL[who], g = H.head, B = H.B, parts = [];
+  const hairMat = new THREE.MeshStandardMaterial({ color: HAIR, roughness: 0.95 });
+  if (M.hair === "rizos") {
+    // Degradado: laterales y nuca muy cortos (semitransparentes), arriba rizos
+    parts.push(cap(g, 1.02, 100, 60, new THREE.MeshStandardMaterial({ color: HAIR, roughness: 1, transparent: true, opacity: 0.72, depthWrite: false })));
+    parts.push(cap(g, 1.045, 62, 18, hairMat));
+    const curls = [];
+    let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let k = 0; k < 280; k++) {
+      const th = Math.acos(1 - rnd() * (1 - Math.cos(64 * D))), ph = rnd() * Math.PI * 2;
+      const d = new THREE.Vector3(Math.sin(th) * Math.cos(ph), Math.cos(th), Math.sin(th) * Math.sin(ph)).applyAxisAngle(new THREE.Vector3(1, 0, 0), -18 * D);
+      const r = 0.013 + rnd() * 0.008, lift = 1.07 + rnd() * 0.05;
+      const sg = new THREE.SphereGeometry(r, 7, 5);
+      sg.translate(g.C.x + d.x * g.rx * lift, g.C.y + d.y * g.ry * lift, g.C.z + d.z * g.rz * lift);
+      curls.push(sg);
+    }
+    const cm = new THREE.Mesh(mergeGeometries(curls), hairMat); cm.castShadow = true; parts.push(cm);
+  }
+  if (M.hair === "coleta") {
+    parts.push(cap(g, 1.04, 106, 42, hairMat));
+    const base = g.C.clone().add(new THREE.Vector3(0, g.ry * 0.3, -g.rz * 1.02));
+    const dir = new THREE.Vector3(0, -1, -0.35).normalize(), len = 0.2;
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.01, len, 16), hairMat);
+    tail.position.copy(base).addScaledVector(dir, len / 2 + 0.01); tail.quaternion.setFromUnitVectors(UP, dir.clone().negate()); tail.castShadow = true;
+    const knot = new THREE.Mesh(new THREE.SphereGeometry(0.034, 16, 12), hairMat); knot.position.copy(base);
+    const tie = new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.006, 8, 20), new THREE.MeshStandardMaterial({ color: 0xCF3F73, roughness: 0.6 }));
+    tie.position.copy(base).addScaledVector(dir, 0.03); tie.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
+    parts.push(tail, knot, tie);
+  }
+  if (M.glasses) {
+    const frame = new THREE.MeshStandardMaterial({ color: 0x1D1F24, roughness: 0.4, metalness: 0.3 });
+    const lensM = new THREE.MeshStandardMaterial({ color: 0xBFD8F0, transparent: true, opacity: 0.18, roughness: 0.1 });
+    const ey = g.N.y + 0.034, ray = new THREE.Raycaster(), rims = [];
+    for (const sx of [1, -1]) {
+      const ex = g.C.x + sx * 0.032;
+      ray.set(new THREE.Vector3(ex, ey, g.C.z + 0.4), new THREE.Vector3(0, 0, -1));
+      const hit = ray.intersectObjects(H.meshes, false)[0];
+      const z = (hit ? hit.point.z : g.N.z - 0.025) + 0.014;
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.0024, 8, 32), frame); rim.position.set(ex, ey, z); rim.scale.y = 0.85;
+      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.02, 24), lensM); lens.position.set(ex, ey, z); lens.scale.y = 0.85;
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.0018, 0.0018, 1, 6), frame);
+      between(arm, new THREE.Vector3(ex + sx * 0.02, ey, z), new THREE.Vector3(g.C.x + sx * (g.rx + 0.004), ey - 0.004, g.C.z - 0.01));
+      rims.push(rim); parts.push(rim, lens, arm);
+      // Ojos detrás del cristal (el modelo original llevaba gafas de sol)
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.0118, 20, 14), new THREE.MeshStandardMaterial({ color: 0xF1ECE4, roughness: 0.35 }));
+      eye.position.set(ex, ey - 0.001, z - 0.02); eye.scale.set(1.15, 0.8, 0.55);
+      const iris = new THREE.Mesh(new THREE.CircleGeometry(0.0058, 20), new THREE.MeshStandardMaterial({ color: 0x3B2415, roughness: 0.3 }));
+      iris.position.set(ex, ey - 0.001, z - 0.0131);
+      const pupil = new THREE.Mesh(new THREE.CircleGeometry(0.0026, 16), new THREE.MeshBasicMaterial({ color: 0x080808 }));
+      pupil.position.set(ex, ey - 0.001, z - 0.013);
+      parts.push(eye, iris, pupil);
+    }
+    const bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.0018, 0.0018, 1, 6), frame);
+    between(bridge, rims[0].position.clone().add(new THREE.Vector3(-0.02, 0.004, 0)), rims[1].position.clone().add(new THREE.Vector3(0.02, 0.004, 0)));
+    parts.push(bridge);
+  }
+  if (M.beard) {
+    // Media barba: capa oscura semitransparente sobre la mandíbula, mentón, bigote y patillas (se mueve con la cara)
+    H.meshes.forEach((m) => { if (/Beard/.test(m.material?.name || "")) m.visible = false; });
+    // Máscara suave por vértice: línea de barba desde debajo de la nariz hasta la patilla, sin labios
+    const hm = H.headMesh, P = g.P, idx = hm.geometry.index, n = P.length / 3;
+    const ss = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+    const col = new Float32Array(n * 4), alpha = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const ax = Math.abs(P[i * 3] - g.C.x), dy = P[i * 3 + 1] - g.N.y, z = P[i * 3 + 2], fz = z - g.C.z;
+      const U = ax < 0.045 ? -0.012 - 0.4 * ax : -0.03 + (ax - 0.045) * 2.6;
+      let m = ss(-0.004, 0.006, U - dy) * ss(-0.118, -0.104, dy) * ss(-0.03, -0.015, fz);
+      if (ax < 0.025 && dy < -0.021 && dy > -0.046 && z > g.N.z - 0.04) m *= 0.15;
+      alpha[i] = m; col.set([0.018, 0.011, 0.007, 0.72 * m], i * 4);
+    }
+    const keep = [];
+    for (let t = 0; t < idx.count; t += 3) { const a = idx.getX(t), b = idx.getX(t + 1), c = idx.getX(t + 2); if (alpha[a] + alpha[b] + alpha[c] > 0.01) keep.push(a, b, c); }
+    const bg = new THREE.BufferGeometry();
+    for (const [k, v] of Object.entries(hm.geometry.attributes)) bg.setAttribute(k, v);
+    bg.setAttribute("color", new THREE.BufferAttribute(col, 4));
+    bg.setIndex(keep);
+    const bm = new THREE.SkinnedMesh(bg, new THREE.MeshStandardMaterial({ color: 0xFFFFFF, vertexColors: true, roughness: 1, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+    bm.position.copy(hm.position); bm.quaternion.copy(hm.quaternion); bm.scale.copy(hm.scale);
+    hm.parent.add(bm); bm.bind(hm.skeleton, hm.bindMatrix); bm.frustumCulled = false;
+  }
+  parts.forEach((m) => { H.root.add(m); B.Head.attach(m); });
 }
 
 const _e = new THREE.Euler(), _q = new THREE.Quaternion();
@@ -361,7 +524,7 @@ function empty(H, bone, pos) { const o = new THREE.Object3D(); o.position.copy(p
 
 export function hasAnim(key) { return !!ANIMS[key]; }
 
-export async function mountViewer(host, key, muscles, who = "carlos") {
+export async function mountViewer(host, key, muscles, who = "carlos", opts = {}) {
   const A = ANIMS[key];
   if (!A.R) A.R = A.frames.map(resolve);
   const buf = await modelBuffer(who);
@@ -389,6 +552,7 @@ export async function mountViewer(host, key, muscles, who = "carlos") {
   if (A.strap) H.grip = 60;
   const knee = A.kneeBand ? ["Left", "Right"].map((s, i) => empty(H, s + "UpLeg", W(B[s + "Leg"]).add(new THREE.Vector3((i ? -0.07 : 0.07) * k, 0.05 * k, 0)))) : null;
   const footStrap = A.strap ? empty(H, "LeftFoot", W(B.LeftToeBase).add(new THREE.Vector3(0, -0.02, 0.03))) : null;
+  styleHead(H, who);
   const glow = addMuscles(H, muscles || []);
 
   const Wd = host.clientWidth || 320, Hd = host.clientHeight || 320;
@@ -478,9 +642,10 @@ export async function mountViewer(host, key, muscles, who = "carlos") {
 
   // Cámara: encuadra el recorrido completo a lo alto y a lo ancho
   const target = all.getCenter(new THREE.Vector3()), size = all.getSize(new THREE.Vector3());
+  if (opts.face) { size.set(0.25, 0.25, 0.25); target.copy(W(B.Head)).add(new THREE.Vector3(0, 0.08, 0)); }
   const tv = Math.tan(15 * D), asp = Wd / Hd;
   const dist = Math.max(size.y / 2 / tv * 1.15, Math.max(size.x, size.z) / 2 / (tv * asp) * 1.2) + Math.min(size.x, size.z) / 2 + 0.2;
-  let az = (A.az ?? 50) * D, el = (A.el ?? 12) * D;
+  let az = (opts.az ?? A.az ?? 50) * D, el = (opts.el ?? A.el ?? 12) * D;
   const place = () => {
     cam.position.set(target.x + dist * Math.sin(az) * Math.cos(el), target.y + dist * Math.sin(el), target.z + dist * Math.cos(az) * Math.cos(el));
     cam.lookAt(target);

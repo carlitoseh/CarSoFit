@@ -226,6 +226,23 @@ h3{font-size:16px;font-weight:700}
 .hist li:first-child{border-top:0}
 .cmp{background:var(--surface-2);border-radius:14px;padding:10px 12px;font-size:14px}
 .cmp b{font-family:var(--display);font-size:18px}
+.seg{display:inline-flex;background:var(--surface-2);border-radius:999px;padding:3px;gap:2px;align-self:flex-start}
+.seg button{border:0;background:transparent;border-radius:999px;padding:6px 16px;font-weight:600;font-size:13px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.switch{width:48px;height:28px;border-radius:999px;border:0;background:var(--line);position:relative;flex:none}
+.switch i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:var(--shadow);transition:left .2s}
+.switch[aria-checked="true"]{background:var(--me)} .switch[aria-checked="true"] i{left:23px}
+.mhead{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.month{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.mday{border:0;background:var(--surface);border-radius:12px;min-height:66px;padding:6px 1px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;box-shadow:var(--shadow);position:relative;color:var(--ink);min-width:0}
+.mday b{font-family:var(--display);font-size:15px;line-height:1}
+.mday .memo{display:flex;flex-wrap:wrap;justify-content:center;font-size:12px;line-height:1.15;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.mday.out{opacity:.45} .mday.today{outline:2px solid var(--me)}
+.mday:disabled{background:var(--surface-2);box-shadow:none;cursor:default}
+.mtp{position:absolute;top:3px;right:3px;font-size:9px}
+.dlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.dlist li{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;background:var(--surface);border-radius:14px;padding:10px 12px}
+.dlist .emo{font-size:24px;text-align:center}
 .demo{font-size:12px;color:var(--muted);text-align:center;margin-top:18px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:380px){ .form-row{grid-template-columns:1fr 1fr} .form-row .btn{grid-column:1/-1} .who button{padding:6px 9px} }
@@ -571,7 +588,8 @@ function loadBox(p,e,i){
   </div>`;
 }
 
-function dish(id){ return DISHES[id] || (S.dishes&&S.dishes[id]) || {slot:"com",name:"Plato no disponible",kcal:0,p:0,c:0,g:0,f:0,time:"",tool:"",ing:[],steps:[],why:"",micro:"",sofia:""}; }
+function planDish(id){ for(const w of Object.values(S.plan||{})) if(w?.dishes?.[id]) return w.dishes[id]; return null; }
+function dish(id){ return DISHES[id] || (S.dishes&&S.dishes[id]) || planDish(id) || {slot:"com",name:"Plato no disponible",kcal:0,p:0,c:0,g:0,f:0,time:"",tool:"",ing:[],steps:[],why:"",micro:"",sofia:""}; }
 
 // ---------- Estado ----------
 const TODAY = new Date();
@@ -579,6 +597,8 @@ const TODAY_IDX = (TODAY.getDay()+6)%7;
 const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const TODAY_ISO = iso(TODAY);
 function dayDate(i){ const d=new Date(TODAY); d.setDate(TODAY.getDate()-TODAY_IDX+i); return iso(d); }
+function addDays(dIso,n){ const d=new Date(dIso+"T12:00"); d.setDate(d.getDate()+n); return iso(d); }
+function mondayOf(dIso){ const d=new Date(dIso+"T12:00"); d.setDate(d.getDate()-((d.getDay()+6)%7)); return iso(d); }
 const START_ISO = "2026-09-23";
 
 const DEFAULT_STATE = {
@@ -590,8 +610,9 @@ const DEFAULT_STATE = {
   done:{},
   symptoms:[], loads:[],
   dishes:{}, sessions:{}, eaten:{},
+  prefs:{tupper:false,tupperDays:[0,1,2,3,4]}, plan:{}, weekStart:null,
   profiles:{
-    carlos:{name:"Carlos",sex:"h",age:28,height:176,activity:1.4,goal:"Perder grasa y tonificar",pace:0.5,
+    carlos:{name:"Carlos",sex:"h",age:28,height:183,activity:1.4,goal:"Perder grasa y tonificar",pace:0.5,
       days:[0,1,2,3,5],restrictions:["Coliflor","Judías verdes","Salmón ahumado","Berenjena al vapor o en guiso"],
       health:["Fascitis plantar","Colesterol elevado (sin tratamiento)"]},
     sofia:{name:"Sofía",sex:"m",birth:"1999-10-09",age:26,height:160,activity:1.4,goal:"Comer bien y evitar brotes de colitis",pace:0,
@@ -608,6 +629,7 @@ let S;
 try{ S = JSON.parse(localStorage.getItem(KEY)) || null; }catch(e){ S=null; }
 if(!S) S = JSON.parse(JSON.stringify(DEFAULT_STATE));
 S.day = TODAY_IDX; S.view = S.view || "hoy"; S.symptoms = S.symptoms || []; S.dishes = S.dishes || {}; S.sessions = S.sessions || {}; S.eaten = S.eaten || {}; S.loads = S.loads || [];
+S.prefs = S.prefs || {tupper:false,tupperDays:[0,1,2,3,4]}; S.plan = S.plan || {};
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
 
 // ---------- Cálculos ----------
@@ -725,7 +747,7 @@ function mealRow(id,i,slot){
   return `<button class="meal" data-dish="${id}" data-day="${i}" data-slot="${slot}">
     <div class="thumb emo t-${slot}" aria-hidden="true">${foodEmoji(x.name,slot)}</div>
     <div><div class="slot">${SLOTS[slot]}</div><div class="title">${esc(x.name)}</div>
-    <div class="tags"><span class="tag">${esc(x.tool)}</span><span class="tag">${esc(x.time)}</span>${(()=>{const sy=symFor(p,dayDate(i),slot);return sy?`<span class="tag ${lvl(sy.score)}">Sentó ${sy.score}/10</span>`:""})()}</div></div>
+    <div class="tags">${x.tupper?'<span class="tag warn">🍱 Tupper</span>':""}<span class="tag">${esc(x.tool)}</span><span class="tag">${esc(x.time)}</span>${(()=>{const sy=symFor(p,dayDate(i),slot);return sy?`<span class="tag ${lvl(sy.score)}">Sentó ${sy.score}/10</span>`:""})()}</div></div>
     <div class="kcal num">${fmt(r0(x.kcal*f))}<small>kcal</small></div></button>`;
 }
 
@@ -777,6 +799,7 @@ function vMenu(){
   <section class="stack" style="margin-top:6px">
     <div class="row" style="justify-content:space-between;align-items:flex-end"><div><div class="eyebrow">Menú semanal</div><h1>${DAY_NAMES[i]}</h1></div>
       <button class="btn ghost sm" id="share-week">${SHARE_ICON}Compartir semana</button></div>
+    ${segNav("menu")}
     <div class="days" role="group" aria-label="Día">${DAY_SHORT.map((n,k)=>{const dt=new Date(monday); dt.setDate(monday.getDate()+k);
       return `<button class="day ${k===TODAY_IDX?"today":""}" data-day-pick="${k}" aria-pressed="${k===i}"><span>${n}</span><b class="num">${dt.getDate()}</b></button>`}).join("")}</div>
     <form class="ai" id="ai-form"><input id="ai-q" placeholder="«Cambia la cena del martes», «rehaz el jueves»…" aria-label="Qué platos quieres que cambie la IA"><button class="btn sm">Cambiar con IA</button></form>
@@ -786,7 +809,112 @@ function vMenu(){
   <section class="section">
     <div class="section-head"><h2>Raciones de ${esc(S.profiles[p].name)}</h2><span class="muted num">${fmt(r0(m.kcal))} kcal · ${r0(m.p)} g prot.</span></div>
     ${["des","com","cen","sna"].map(s=>mealRow(d[s],i,s)).join("")}
+  </section>
+  ${tupperCard()}`;
+}
+function segNav(v){ return `<div class="seg" role="group" aria-label="Vista"><button data-go="menu" aria-pressed="${v==="menu"}">Semana</button><button data-go="mes" aria-pressed="${v==="mes"}">Mes</button></div>`; }
+
+// ---------- Comidas de tupper (batch cooking) ----------
+function tupperInfo(){ return {dias:S.prefs.tupper?[...S.prefs.tupperDays].sort():[]}; }
+function tupperCard(){
+  const on=S.prefs.tupper, days=S.prefs.tupperDays;
+  const list=on?S.week.map((d,i)=>({i,x:dish(d.com)})).filter(o=>days.includes(o.i)):[];
+  return `<section class="section"><div class="panel stack">
+    <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div><h3>🍱 Comidas para llevar</h3>
+      <p class="muted" style="margin:2px 0 0;font-size:13px">Se cocinan la tarde anterior o en batch y en el trabajo solo se calientan. La cena puede ser más elaborada.</p></div>
+      <button class="switch" id="tp-on" role="switch" aria-checked="${on}" aria-label="Modo tupper"><i></i></button></div>
+    ${on?`<div class="field"><label>Días de tupper</label><div class="chips">${DAY_SHORT.map((n,k)=>`<button class="chip" data-tpday="${k}" aria-pressed="${days.includes(k)}">${n}</button>`).join("")}</div></div>
+      <div class="row"><button class="btn me sm" id="tp-apply">Pasar las comidas de esta semana a tupper</button></div>
+      ${list.length?`<div><h3 style="font-size:14px;margin-bottom:4px">Plan de cocina</h3><ul class="hist">${list.map(o=>`<li><span><b>${DAY_SHORT[o.i]}</b> · ${esc(o.x.name)}</span><span class="muted" style="text-align:right;font-size:13px">${o.x.tupper?esc(o.x.prep):"aún no es de tupper"}</span></li>`).join("")}</ul></div>`:""}`
+      :`<p class="muted" style="margin:0;font-size:13px">Actívalo y la IA hará las comidas pensadas para llevar al hospital: guisos, legumbres, arroces, horno… que aguantan en la nevera y se calientan en 2-3 minutos.</p>`}
+  </div></section>`;
+}
+function applyTupper(){
+  const now=new Date().getHours();
+  const ds=S.prefs.tupperDays.filter(d=>d>TODAY_IDX||(d===TODAY_IDX&&now<11)).sort();
+  if(!ds.length){ toast("Esta semana ya no quedan comidas de tupper por preparar. La semana que viene se hará así."); return; }
+  aiChanges("Comidas de tupper para llevar al trabajo: se preparan la tarde anterior o en batch cooking y se calientan en el microondas.",ds.map(dia=>({dia,franja:"com"})));
+}
+
+// ---------- Semanas: cambio de semana, plan futuro y calendario mensual ----------
+function weekData(mon){
+  if(mon===(S.weekStart||dayDate(0))) return {days:S.week,cur:true};
+  const w=S.plan[mon]; if(w?.days) return {days:w.days};
+  if(w?.gen&&Date.now()-w.gen<4*60e3) return {gen:true};
+  return null;
+}
+// El lunes, la semana preparada pasa a ser la actual (y la que termina se guarda para el calendario)
+function rollWeek(){
+  const MON=dayDate(0);
+  if(!S.weekStart){ S.weekStart=MON; pushKey("weekStart",true); return; }
+  if(S.weekStart>=MON) return;
+  const used=new Set(S.week.flatMap(d=>Object.values(d)));
+  S.plan[S.weekStart]={days:S.week,dishes:Object.fromEntries(Object.entries(S.dishes).filter(([k])=>used.has(k)))};
+  const nx=S.plan[MON];
+  if(nx?.days){ S.week=nx.days; S.dishes={...nx.dishes}; delete S.plan[MON]; }
+  S.weekStart=MON; S.shop={}; S.done={};
+  Object.keys(S.plan).forEach(k=>{ if(k<addDays(MON,-63)) delete S.plan[k]; });
+  ["week","dishes","plan","weekStart","shop","done"].forEach(k=>pushKey(k,true));
+}
+async function generateWeek(mon,silent){
+  if(!CLOUD_ENABLED||!sb||!ME){ if(!silent) toast("En la app instalada, la IA prepara el menú de esa semana."); return; }
+  const {data:row}=await sb.from("estado").select("valor").eq("clave","plan").maybeSingle();
+  if(row?.valor) S.plan=row.valor;
+  const cur=S.plan[mon];
+  if(cur?.days||(cur?.gen&&Date.now()-cur.gen<4*60e3)){ softRender(); return; }
+  S.plan[mon]={gen:Date.now(),by:ME.persona}; pushKey("plan",true); softRender();
+  toast(silent?`Preparando el menú de la semana del ${shortDate(mon)}…`:"Generando el menú de esa semana (en torno a un minuto)…");
+  try{
+    const prev=weekData(addDays(mon,-7))?.days||S.week;
+    const anteriores=[...new Set(prev.flatMap(d=>Object.values(d).map(id=>dish(id).name)))];
+    const {data,error}=await sb.functions.invoke("ia",{body:{accion:"semana",peticion:"",anteriores,tupper:tupperInfo()}});
+    if(error){ let m=error.message; try{ m=(await error.context.json()).error||m; }catch(e){} throw new Error(m); }
+    if(!data?.days) throw new Error(data?.error||"respuesta vacía");
+    const stamp=Date.now().toString(36), dishes={};
+    const days=data.days.map((d,i)=>{ const o={}; ["des","com","cen","sna"].forEach(sl=>{ const id=`w${stamp}_${i}_${sl}`; dishes[id]=d[sl]; o[sl]=id; }); return o; });
+    S.plan[mon]={days,dishes,made:Date.now()}; pushKey("plan",true); softRender();
+    toast(`Menú de la semana del ${shortDate(mon)} listo: míralo en Menú → Mes.`);
+  }catch(e){ delete S.plan[mon]; pushKey("plan",true); softRender(); toast("No se pudo preparar la semana: "+e.message); }
+}
+// Desde el jueves, se prepara sola la semana siguiente
+function autoNextWeek(){ if(TODAY_IDX<3) return; const nx=addDays(dayDate(0),7); if(S.plan[nx]?.days) return; setTimeout(()=>generateWeek(nx,true),1500+Math.random()*4000); }
+
+function vMes(){
+  const off=S.monthOff||0, base=new Date(TODAY.getFullYear(),TODAY.getMonth()+off,1);
+  const mname=base.toLocaleDateString("es-ES",{month:"long"}), title=mname[0].toUpperCase()+mname.slice(1)+" "+base.getFullYear();
+  const start=new Date(base); start.setDate(1-((base.getDay()+6)%7));
+  const weeks=[]; for(let w=0;w<6;w++){ const m=new Date(start); m.setDate(start.getDate()+w*7); if(w>0&&m.getMonth()!==base.getMonth()) break; weeks.push(iso(m)); }
+  const MON=dayDate(0), nextMon=addDays(MON,7);
+  const cell=dIso=>{ const d=new Date(dIso+"T12:00"), inM=d.getMonth()===base.getMonth(), wd=weekData(mondayOf(dIso)), k=(d.getDay()+6)%7, day=wd?.days?.[k];
+    const em=day?["des","com","cen"].map(sl=>`<span>${foodEmoji(dish(day[sl]).name,sl)}</span>`).join(""):(wd?.gen?"⏳":"");
+    return `<button class="mday${inM?"":" out"}${dIso===TODAY_ISO?" today":""}" data-mday="${dIso}" ${day?"":"disabled"} aria-label="${d.toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"})}"><b class="num">${d.getDate()}</b><span class="memo">${em}</span>${day&&dish(day.com).tupper?'<span class="mtp">🍱</span>':""}</button>`; };
+  return `<section class="stack" style="margin-top:6px">
+    <div class="row" style="justify-content:space-between;align-items:flex-end"><div><div class="eyebrow">Menú mensual</div><h1>${title}</h1></div>
+      <div class="row" style="gap:6px"><button class="icon-btn" data-moff="-1" aria-label="Mes anterior">‹</button><button class="icon-btn" data-moff="1" aria-label="Mes siguiente">›</button></div></div>
+    ${segNav("mes")}
+    <div class="mhead">${DAY_SHORT.map(n=>`<span>${n}</span>`).join("")}</div>
+    <div class="month">${weeks.flatMap(m=>[0,1,2,3,4,5,6].map(k=>cell(addDays(m,k)))).join("")}</div>
+    <p class="muted" style="margin:0;font-size:12px">Cada día: desayuno, comida y cena. 🍱 = comida de tupper. Toca un día para ver su menú.</p>
+  </section>
+  <section class="section"><h2>Semanas</h2>
+    ${weeks.map(m=>{ const wd=weekData(m), lab=`${shortDate(m)} – ${shortDate(addDays(m,6))}`;
+      const st=wd?.cur?'<span class="tag ok">Semana actual</span>':wd?.days?'<span class="tag ok">Menú listo</span>':wd?.gen?'<span class="tag warn">Preparando…</span>':m<MON?'<span class="tag">Sin menú</span>':m<=addDays(MON,14)?`<button class="btn sm" data-genweek="${m}">Preparar menú</button>`:'<span class="tag">Más adelante</span>';
+      return `<div class="panel row" style="justify-content:space-between;padding:12px 14px"><span><b class="num">${lab}</b>${m===nextMon?' <span class="muted" style="font-size:13px">· la que viene</span>':""}</span>${st}</div>`; }).join("")}
+    <p class="muted" style="margin:0;font-size:13px">Desde el jueves la app prepara sola el menú de la semana siguiente${S.prefs.tupper?", con las comidas de tupper":""}. El lunes pasa a ser la semana actual y la lista de la compra se rehace.</p>
   </section>`;
+}
+function openMonthDay(dIso){
+  const wd=weekData(mondayOf(dIso)), d=new Date(dIso+"T12:00"), k=(d.getDay()+6)%7, day=wd?.days?.[k]; if(!day) return;
+  const p=S.person, base=Object.values(day).reduce((a,id)=>a+dish(id).kcal,0), f=targetKcal(p)/(base||1);
+  $("#sheet-root").innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-modal="true" aria-label="Menú del día">
+    <div class="grab"></div>
+    <div class="sheet-head"><div><div class="eyebrow">${d.toLocaleDateString("es-ES",{day:"numeric",month:"long"})}${wd.cur?" · semana actual":""}</div><h2 style="margin-top:4px">${DAY_NAMES[k]}</h2></div>
+      <button class="icon-btn" data-close aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="stack" style="margin-top:14px">
+      <ul class="dlist">${["des","com","cen","sna"].map(sl=>{ const x=dish(day[sl]); return `<li><span class="emo" aria-hidden="true">${foodEmoji(x.name,sl)}</span><span><span class="eyebrow" style="font-size:11px">${SLOTS[sl]}</span><br><b>${esc(x.name)}</b>${x.tupper?`<br><span class="muted" style="font-size:12px">🍱 ${esc(x.prep)}</span>`:""}</span><span class="num muted" style="font-size:13px">${fmt(r0(x.kcal*f))} kcal</span></li>`; }).join("")}</ul>
+      <p class="muted" style="margin:0;font-size:12px">Calorías de la ración de ${esc(S.profiles[p].name)}.</p>
+      ${wd.cur?`<div class="row"><button class="btn me" data-openday="${k}">Abrir en el menú semanal</button></div>`:""}
+    </div></div></div>`;
 }
 
 function shopList(){
@@ -958,6 +1086,7 @@ function openDish(id,i,slot){
       <div class="bar">${seg(x.p*4,"var(--carlos)")}${seg(x.c*4,"var(--sun)")}${seg(x.g*9,"var(--sofia)")}</div>
       <div class="legend"><span><i style="background:var(--carlos)"></i>Proteína ${x.p} g</span><span><i style="background:var(--sun)"></i>Hidratos ${x.c} g</span><span><i style="background:var(--sofia)"></i>Grasa ${x.g} g</span><span>Fibra ${x.f} g</span></div>
       <p class="muted" style="margin:0;font-size:12px">Valores por ración estándar, estimados. En la fase 3 se calcularán con la base de datos BEDCA.</p>
+      ${x.tupper?`<div class="note" style="background:var(--sun-soft)"><h3>🍱 Para llevar</h3><p><b>Prepáralo:</b> ${esc(x.prep)}</p><p><b>Nevera:</b> hasta ${x.nevera} día${x.nevera==1?"":"s"} en táper de vidrio</p><p><b>En el trabajo:</b> ${esc(x.recalentar)}</p></div>`:""}
       <div class="note"><h3>Por qué os conviene</h3><p>${esc(x.why)}</p></div>
       <div class="note"><h3>Microbioma</h3><p>${esc(x.micro)}</p></div>
       <div class="note" style="background:var(--sofia-soft)"><h3>Para Sofía</h3><p>${esc(x.sofia)}</p></div>
@@ -1035,7 +1164,7 @@ function openEaten(i,slot){
 function aiChanges(peticion,objetivos){
   if(!CLOUD_ENABLED){ toast("En la app instalada, la IA cambia los platos que le digas."); return; }
   const semana=S.week.map(d=>Object.fromEntries(Object.entries(d).map(([s,id])=>[s,dish(id).name])));
-  askAI({accion:"cambios",peticion,objetivos,semana,diaVisto:S.day,hoy:TODAY_IDX}).then(r=>{
+  askAI({accion:"cambios",peticion,objetivos,semana,diaVisto:S.day,hoy:TODAY_IDX,tupper:tupperInfo()}).then(r=>{
     if(!r?.cambios) return;
     if(!r.cambios.length){ toast(r.aviso||"No sé qué platos cambiar: di el día y la comida, p. ej. «la cena del martes»."); return; }
     const prev={week:JSON.parse(JSON.stringify(S.week)),dishes:JSON.parse(JSON.stringify(S.dishes))}, stamp=Date.now().toString(36);
@@ -1159,7 +1288,7 @@ function sharePdf(){
 const CLOUD_ENABLED = false; // en index.html se activa automáticamente
 const SUPA_URL = "https://jlkjvopynizxpvaxwdqr.supabase.co";
 const SUPA_KEY = "sb_publishable_r90i4SuHTzwdnfrcdOOM2Q_Vqjc-Z4J"; // clave pública: la seguridad la ponen las reglas RLS
-const SHARED_KEYS = ["week","shop","extras","done","profiles","dishes","sessions","eaten"];
+const SHARED_KEYS = ["week","shop","extras","done","profiles","dishes","sessions","eaten","prefs","plan","weekStart"];
 let sb=null, ME=null; const timers={};
 function pushKey(k,now){
   if(!sb||!ME) return; clearTimeout(timers[k]);
@@ -1231,7 +1360,7 @@ async function afterLogin(session){
   const me=(mem||[]).find(x=>x.email===email);
   if(!me){ await sb.auth.signOut(); showLogin("Este correo no está autorizado en CarSofit."); return; }
   ME=me; if(!S.personChosen) S.person=me.persona;
-  await pullAll(); subscribe(); $("#login")?.remove(); render();
+  await pullAll(); rollWeek(); subscribe(); $("#login")?.remove(); render(); autoNextWeek();
 }
 async function cloudBoot(){
   if(!window.supabase){ render(); toast("Sin conexión: usando los datos guardados en el móvil."); return; }
@@ -1247,11 +1376,11 @@ document.addEventListener("click",e=>{
 });
 
 // ---------- Render ----------
-const VIEWS={hoy:vHoy,menu:vMenu,compra:vCompra,entreno:vEntreno,progreso:vProgreso,perfil:vPerfil};
+const VIEWS={hoy:vHoy,menu:vMenu,mes:vMes,compra:vCompra,entreno:vEntreno,progreso:vProgreso,perfil:vPerfil};
 function render(){
   document.body.classList.toggle("is-sofia",S.person==="sofia");
   document.querySelectorAll(".who button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.p===S.person));
-  document.querySelectorAll(".nav button").forEach(b=>{ if(b.dataset.v===S.view) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
+  document.querySelectorAll(".nav button").forEach(b=>{ if(b.dataset.v===(S.view==="mes"?"menu":S.view)) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
   $("#view").innerHTML=VIEWS[S.view]();
   save();
 }
@@ -1276,7 +1405,8 @@ document.addEventListener("click",e=>{
     const {day,slot}=sw.dataset; const i=+day; const cur=S.week[i][slot];
     const peticion=$("#swap-q")?.value.trim()||"";
     askAI({accion:"plato",dia:DAY_NAMES[i],franja:slot,franjaNombre:SLOTS[slot],actual:dish(cur).name,
-      otros:Object.entries(S.week[i]).filter(([k])=>k!==slot).map(([,v])=>dish(v).name),peticion}).then(r=>{
+      otros:Object.entries(S.week[i]).filter(([k])=>k!==slot).map(([,v])=>dish(v).name),peticion,
+      tupper:!!(S.prefs.tupper&&slot==="com"&&S.prefs.tupperDays.includes(i))}).then(r=>{
       if(!r?.dish) return;
       const id=`ai_${Date.now().toString(36)}`; S.dishes[id]=r.dish; S.week[i][slot]=id; pruneDishes();
       pushKey("dishes",true); pushKey("week",true); closeSheet(); render(); toast(`Nuevo plato: ${r.dish.name}`); openDish(id,i,slot);
@@ -1286,6 +1416,14 @@ document.addEventListener("click",e=>{
     const pool=Object.keys(DISHES).filter(k=>DISHES[k].slot===slot && k!==cur);
     S.week[day][slot]=pool[Math.floor(Math.random()*pool.length)];
     pushKey("week"); closeSheet(); render(); toast("Plato cambiado. En la fase 3 lo elegirá la IA según lo que le pidas."); return; }
+  if(t.closest("#tp-on")){ S.prefs.tupper=!S.prefs.tupper; pushKey("prefs"); render();
+    if(S.prefs.tupper) toast("Modo tupper activado: las comidas que haga la IA serán para llevar.",{label:"Aplicar ya",fn:applyTupper}); return; }
+  const tpd=t.closest("[data-tpday]"); if(tpd){ const k=+tpd.dataset.tpday, ds=S.prefs.tupperDays; S.prefs.tupperDays=ds.includes(k)?ds.filter(x=>x!==k):[...ds,k]; pushKey("prefs"); render(); return; }
+  if(t.closest("#tp-apply")){ applyTupper(); return; }
+  const md=t.closest("[data-mday]"); if(md){ openMonthDay(md.dataset.mday); return; }
+  const mo=t.closest("[data-moff]"); if(mo){ S.monthOff=(S.monthOff||0)+ +mo.dataset.moff; render(); return; }
+  const gw=t.closest("[data-genweek]"); if(gw){ generateWeek(gw.dataset.genweek,false); return; }
+  const od=t.closest("[data-openday]"); if(od){ S.day=+od.dataset.openday; closeSheet(); go("menu"); return; }
   if(t.closest("#toast-act")&&toast.act){ const a=toast.act; $("#toast-root").innerHTML=""; toast.act=null; a.fn(); return; }
   if(t.closest("#ai-day")){ aiChanges($("#ai-q")?.value.trim()||"",["des","com","cen","sna"].map(franja=>({dia:S.day,franja}))); return; }
   const eb=t.closest("[data-eat]"); if(eb){ const i=+eb.dataset.eat, slot=eb.dataset.slot, p=S.person, desc=$("#eat-q").value.trim();
@@ -1338,7 +1476,7 @@ document.addEventListener("click",e=>{
     pr.activity=parseFloat($("#pf-act").value); pr.pace=parseFloat($("#pf-pace").value);
     pushKey("profiles"); render(); toast("Perfil guardado. Calorías y raciones recalculadas."); return; }
   if(t.closest("#pf-reset")){ const b=t.closest("#pf-reset");
-    if(b.dataset.armed){ const D=JSON.parse(JSON.stringify(DEFAULT_STATE)); SHARED_KEYS.filter(k=>k!=="eaten").forEach(k=>{S[k]=D[k]; pushKey(k,true);}); render(); toast("Menú, lista, entrenos y perfiles restaurados. Pesadas, síntomas y comidas registradas se conservan."); }
+    if(b.dataset.armed){ const D=JSON.parse(JSON.stringify(DEFAULT_STATE)); SHARED_KEYS.filter(k=>!["eaten","weekStart","plan"].includes(k)).forEach(k=>{S[k]=D[k]; pushKey(k,true);}); render(); toast("Menú, lista, entrenos y perfiles restaurados. Pesadas, síntomas y comidas registradas se conservan."); }
     else { b.dataset.armed="1"; b.textContent="Pulsa otra vez para confirmar"; }
     return; }
 });
@@ -1372,5 +1510,5 @@ document.addEventListener("submit",e=>{
 });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeSheet(); });
 
-if(CLOUD_ENABLED) cloudBoot(); else render();
+if(CLOUD_ENABLED) cloudBoot(); else { rollWeek(); render(); }
 </script>

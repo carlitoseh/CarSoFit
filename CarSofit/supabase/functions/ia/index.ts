@@ -46,6 +46,20 @@ const DISH_SCHEMA = {
   },
   required: ["name", "kcal", "p", "c", "g", "f", "time", "tool", "ing", "steps", "why", "micro", "sofia"],
 };
+// Comida de tupper: además, cuándo prepararla, cuánto aguanta y cómo calentarla
+const TUPPER_DISH = {
+  ...DISH_SCHEMA,
+  properties: {
+    ...DISH_SCHEMA.properties,
+    prep: { type: "STRING", description: "cuándo y cómo prepararlo, p. ej. 'Domingo por la tarde en batch (sirve lunes y martes)' o 'La tarde anterior, 20 min'" },
+    nevera: { type: "INTEGER", description: "días que aguanta en la nevera" },
+    recalentar: { type: "STRING", description: "cómo calentarlo en el microondas del trabajo, p. ej. '2-3 min a 800 W, remover a mitad'" },
+  },
+  required: [...DISH_SCHEMA.required, "prep", "nevera", "recalentar"],
+};
+const TUPPER = `COMIDA DE TUPPER (se la llevan al hospital): llegan de trabajar a las 15:00 sin ganas de cocinar, así que la comida se cocina la tarde anterior o en una sesión de batch cooking (domingo o miércoles por la tarde), se guarda en la nevera en táper de vidrio y al día siguiente solo se calienta 2-3 min en el microondas (o se come templada). Nada que haya que terminar al momento.
+Buenas opciones: guisos y legumbres, arroz o pasta con proteína, pollo o pavo guisado o al horno con verduras asadas, albóndigas en salsa, pescado en salsa o al horno (nunca frito ni rebozado, se reblandece), crema de verduras + proteína, ensaladas templadas de legumbre o cereal con verdura COCINADA (Sofía no come crudo).
+Seguridad: enfriar antes de 2 h, nevera a 4 °C, máximo 3 días (arroz y pasta cocidos, 1-2 días y enfriados rápido), recalentar hasta que humee. Aprovecha una misma elaboración para dos días si encaja. La cena sí puede ser más elaborada.`;
 const DAY_SCHEMA = {
   type: "OBJECT",
   properties: { des: DISH_SCHEMA, com: DISH_SCHEMA, cen: DISH_SCHEMA, sna: DISH_SCHEMA },
@@ -54,6 +68,11 @@ const DAY_SCHEMA = {
 const WEEK_SCHEMA = {
   type: "OBJECT",
   properties: { days: { type: "ARRAY", items: DAY_SCHEMA } },
+  required: ["days"],
+};
+const WEEK_SCHEMA_T = {
+  type: "OBJECT",
+  properties: { days: { type: "ARRAY", items: { ...DAY_SCHEMA, properties: { ...DAY_SCHEMA.properties, com: TUPPER_DISH } } } },
   required: ["days"],
 };
 const SESSION_SCHEMA = {
@@ -158,7 +177,9 @@ const toApp = (d: any, slot: string) => ({
   slot, name: d.name, kcal: d.kcal, p: d.p, c: d.c, g: d.g, f: d.f, time: d.time, tool: d.tool,
   ing: (d.ing ?? []).map((x: any) => [x.n, x.q, x.u, x.sec]),
   steps: d.steps, why: d.why, micro: d.micro, sofia: d.sofia, ai: true,
+  ...(d.prep ? { tupper: true, prep: d.prep, nevera: d.nevera, recalentar: d.recalentar } : {}),
 });
+const sinTupper = (x: any) => { delete x.tupper; delete x.prep; delete x.nevera; delete x.recalentar; return x; };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -203,19 +224,23 @@ Evita o modifica los platos con malestar medio ≥ 5; repite o inspírate en los
         "Sábado: comida saludable para compartir; cena tipo pizza o tosta casera",
         "Domingo: comida de carne blanca asada; cena de crema de verduras",
       ];
+      const tdias: number[] = body.tupper?.dias ?? [];
       const base = `${ctx}
 Platos de la semana anterior, para no repetir demasiado: ${(body.anteriores ?? []).join(", ")}.
 Petición de la pareja para esta semana: ${body.peticion || "ninguna en especial"}.
-Cada día: desayuno (des), comida (com), cena (cen) y tentempié (sna). Verduras distintas cada día; los tentempiés, tipo batch cooking que aguanten varios días.`;
+Cada día: desayuno (des), comida (com), cena (cen) y tentempié (sna). Verduras distintas cada día; los tentempiés, tipo batch cooking que aguanten varios días.${tdias.length ? `
+${TUPPER}
+Son de tupper las comidas (com) de: ${tdias.map((i) => DIAS[i]).join(", ")}. En los demás días, deja prep, nevera y recalentar vacíos o en 0.` : ""}`;
       const half = (temas: string[]) => gemini(`${base}
 Diseña SOLO estos ${temas.length} días, en este orden, siguiendo la guía (la petición de la pareja manda sobre la guía):
 ${temas.join("\n")}
-Devuelve "days" con exactamente ${temas.length} elementos.`, WEEK_SCHEMA, 16000, 75000, deadline);
+Devuelve "days" con exactamente ${temas.length} elementos.`, tdias.length ? WEEK_SCHEMA_T : WEEK_SCHEMA, 16000, 75000, deadline);
       const [a, b] = await Promise.all([half(TEMAS.slice(0, 4)), half(TEMAS.slice(4))]);
       const raw = [...(a.out.days ?? []).slice(0, 4), ...(b.out.days ?? []).slice(0, 3)];
       if (raw.length !== 7) throw new Error("La IA no devolvió los 7 días. Vuelve a intentarlo.");
-      const days = raw.map((d: any) => ({
-        des: toApp(d.des, "des"), com: toApp(d.com, "com"), cen: toApp(d.cen, "cen"), sna: toApp(d.sna, "sna"),
+      const days = raw.map((d: any, i: number) => ({
+        des: sinTupper(toApp(d.des, "des")), com: tdias.includes(i) ? toApp(d.com, "com") : sinTupper(toApp(d.com, "com")),
+        cen: sinTupper(toApp(d.cen, "cen")), sna: sinTupper(toApp(d.sna, "sna")),
       }));
       return json({ model: a.model, days });
     }
@@ -245,9 +270,11 @@ Di qué platos hay que sustituir. Reglas: cambia SOLO lo que la petición pida d
       const porDia: Record<number, string[]> = {};
       objetivos.forEach((o) => (porDia[o.dia] ??= []).push(o.franja));
       const todos = semana.flatMap((d) => Object.values(d));
+      const tdias: number[] = body.tupper?.dias ?? [];
       const res = await Promise.all(Object.entries(porDia).map(async ([dia, franjas]) => {
         const d = semana[+dia] ?? {};
-        const schema = { type: "OBJECT", properties: Object.fromEntries(franjas.map((f) => [f, DISH_SCHEMA])), required: franjas };
+        const esT = (f: string) => f === "com" && tdias.includes(+dia);
+        const schema = { type: "OBJECT", properties: Object.fromEntries(franjas.map((f) => [f, esT(f) ? TUPPER_DISH : DISH_SCHEMA])), required: franjas };
         const quedan = Object.entries(d).filter(([f]) => !franjas.includes(f)).map(([f, n]) => `${FR[f]} «${n}»`).join(", ");
         const { out } = await gemini(`${ctx}
 Sustituye estos platos del ${DIAS[+dia]}:
@@ -255,8 +282,10 @@ ${franjas.map((f) => `- ${f} (${FR[f]}): ahora «${d[f] ?? "?"}»`).join("\n")}
 Platos que se quedan ese día: ${quedan || "ninguno"}.
 Resto de la semana, para no repetir: ${todos.join(", ")}.
 Petición: ${body.peticion || "otra opción distinta, igual de saludable"}.
-Devuelve un plato nuevo, distinto del actual, para cada franja indicada.`, schema, 4096 * franjas.length, 75000, deadline);
-        return franjas.filter((f) => out?.[f]).map((f) => ({ dia: +dia, franja: f, plato: toApp(out[f], f) }));
+Devuelve un plato nuevo, distinto del actual, para cada franja indicada.${franjas.some(esT) ? `
+${TUPPER}
+La comida (com) de este día es de tupper.` : ""}`, schema, 4096 * franjas.length, 75000, deadline);
+        return franjas.filter((f) => out?.[f]).map((f) => ({ dia: +dia, franja: f, plato: esT(f) ? toApp(out[f], f) : sinTupper(toApp(out[f], f)) }));
       }));
       return json({ cambios: res.flat() });
     }
@@ -280,9 +309,11 @@ En "nota", 1-2 frases amables: valoración según su salud y objetivo (${foco}) 
 Sustituye este plato del ${body.dia} (${body.franjaNombre}): «${body.actual}».
 Resto de platos de ese día: ${(body.otros ?? []).join(", ")}.
 Petición: ${body.peticion || "otra opción distinta, igual de saludable"}.
-Devuelve un único plato para la misma franja.`;
-      const { model, out } = await gemini(prompt, DISH_SCHEMA, 4096, 45000, deadline);
-      return json({ model, dish: toApp(out, body.franja) });
+Devuelve un único plato para la misma franja.${body.tupper ? `
+${TUPPER}
+Este plato es la comida de tupper.` : ""}`;
+      const { model, out } = await gemini(prompt, body.tupper ? TUPPER_DISH : DISH_SCHEMA, 4096, 45000, deadline);
+      return json({ model, dish: body.tupper ? toApp(out, body.franja) : sinTupper(toApp(out, body.franja)) });
     }
 
     if (body.accion === "entreno") {
