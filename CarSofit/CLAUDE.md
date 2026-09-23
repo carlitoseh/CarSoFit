@@ -45,7 +45,8 @@ Juego de mancuernas de 20 kg, bandas, esterilla, zapatillas. Nada de gimnasio. 4
 ## Supabase (proyecto `carsofit`, ref jlkjvopynizxpvaxwdqr, región eu-west-3)
 - `miembros` (email, persona): lista de correos autorizados. Solo ellos leen y escriben (RLS con `privado.es_miembro()`).
   Al registrarse, un correo de la lista queda confirmado automáticamente (trigger `privado.autoconfirmar_miembro`).
-- `estado` (clave, valor jsonb): claves week, shop, extras, done, profiles. Compartido y en tiempo real.
+- `estado` (clave, valor jsonb): claves week, shop, extras, done, profiles, dishes, sessions, eaten. Compartido y en tiempo real.
+  `eaten` = comidas fuera de plan por persona: clave "persona|AAAA-MM-DD|franja" → {name, kcal, p, c, g, f, nota, desc, plan}.
 - `mediciones` (persona, fecha, peso, grasa) · única por persona y día.
 - `sintomas` (persona, fecha, franja, plato_id, plato_nombre, malestar 0-10, sintomas[], nota) · diario digestivo por comida.
 
@@ -57,4 +58,6 @@ Juego de mancuernas de 20 kg, bandas, esterilla, zapatillas. Nada de gimnasio. 4
    Platos de IA en estado.dishes, sesiones de IA en estado.sessions (clave persona-díaíndice).
    [ ] Pendiente: calcular kcal con BEDCA (ahora son estimaciones de la IA).
 4. [x] Menú: botón «Compartir semana» que genera un folio A4 horizontal (canvas 2339×1654, días en columnas y desayuno/comida/cena en filas) como imagen PNG para WhatsApp y como PDF para imprimir (PDF hecho a mano con la imagen JPEG, sin librerías); también como texto (wa.me).
-5. [x] Publicada en GitHub Pages: https://carlitoseh.github.io/CarSoFit/CarSofit/ (repo carlitoseh/CarSoFit, archivos dentro de la subcarpeta CarSofit/).
+5. [x] IA por partes (acción `cambios`): ya no se rehace la semana entera desde la app. Se escribe qué cambiar («la cena del martes», «rehaz el jueves») o se pulsa «Rehacer el <día> entero»; la IA primero decide qué platos tocar (máx. 8) y luego los genera por día en paralelo. Botón «Deshacer» en el aviso.
+6. [x] Comido fuera de plan (acción `comido`): desde el detalle de un plato de hoy o de días pasados, «¿Has comido otra cosa?». La IA estima kcal y macros y da una valoración; sustituye el plato solo para esa persona y reajusta las raciones del resto de su día (factor limitado a 0,5-1,8). La lista de la compra usa las raciones del plan.
+7. [x] Publicada en GitHub Pages: https://carlitoseh.github.io/CarSoFit/CarSofit/ (repo carlitoseh/CarSoFit, archivos dentro de la subcarpeta CarSofit/).

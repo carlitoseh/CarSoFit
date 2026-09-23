@@ -219,6 +219,7 @@ h3{font-size:16px;font-weight:700}
 .share-prev img{width:100%;height:auto;display:block}
 .btn svg{width:16px;height:16px;vertical-align:-3px;margin-right:6px}
 .toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:14px;font-size:14px;z-index:60;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
+.toast-act{border:0;background:transparent;color:#9FE0BF;font-weight:700;margin-left:10px;padding:0}
 .demo{font-size:12px;color:var(--muted);text-align:center;margin-top:18px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:380px){ .form-row{grid-template-columns:1fr 1fr} .form-row .btn{grid-column:1/-1} .who button{padding:6px 9px} }
@@ -473,7 +474,7 @@ const DEFAULT_STATE = {
   shop:{}, extras:[],
   done:{},
   symptoms:[],
-  dishes:{}, sessions:{},
+  dishes:{}, sessions:{}, eaten:{},
   profiles:{
     carlos:{name:"Carlos",sex:"h",age:28,height:176,activity:1.4,goal:"Perder grasa y tonificar",pace:0.5,
       days:[0,1,2,3,5],restrictions:["Coliflor","Judías verdes","Salmón ahumado","Berenjena al vapor o en guiso"],
@@ -491,7 +492,7 @@ const KEY="carsofit-v2";
 let S;
 try{ S = JSON.parse(localStorage.getItem(KEY)) || null; }catch(e){ S=null; }
 if(!S) S = JSON.parse(JSON.stringify(DEFAULT_STATE));
-S.day = TODAY_IDX; S.view = S.view || "hoy"; S.symptoms = S.symptoms || []; S.dishes = S.dishes || {}; S.sessions = S.sessions || {};
+S.day = TODAY_IDX; S.view = S.view || "hoy"; S.symptoms = S.symptoms || []; S.dishes = S.dishes || {}; S.sessions = S.sessions || {}; S.eaten = S.eaten || {};
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
 
 // ---------- Cálculos ----------
@@ -514,10 +515,21 @@ function energy(p){
 }
 function targetKcal(p){ return energy(p)?.target ?? 1800; }
 function dayBase(i){ const d=S.week[i]; return Object.values(d).reduce((s,id)=>s+dish(id).kcal,0); }
-function factor(p,i){ return targetKcal(p)/dayBase(i); }
+// Lo comido fuera de plan, por persona y fecha: S.eaten["carlos|2026-09-23|com"]
+function eatenFor(p,i,slot){ return S.eaten[`${p}|${dayDate(i)}|${slot}`]; }
+// Ración según el plan (para la lista de la compra)
+function planFactor(p,i){ return targetKcal(p)/dayBase(i); }
+// Ración real: si ya ha comido otra cosa, el resto de platos del día se reajusta para compensar
+function factor(p,i){
+  let ate=0, rest=0;
+  Object.entries(S.week[i]).forEach(([s,id])=>{ const e=eatenFor(p,i,s); if(e) ate+=e.kcal; else rest+=dish(id).kcal; });
+  if(!ate||!rest) return planFactor(p,i);
+  return Math.max(0.5,Math.min(1.8,(targetKcal(p)-ate)/rest));
+}
 function dayMacros(p,i){
   const f=factor(p,i); const t={kcal:0,p:0,c:0,g:0,f:0};
-  Object.values(S.week[i]).forEach(id=>{const x=dish(id); t.kcal+=x.kcal*f; t.p+=x.p*f; t.c+=x.c*f; t.g+=x.g*f; t.f+=x.f*f;});
+  Object.entries(S.week[i]).forEach(([s,id])=>{ const e=eatenFor(p,i,s), x=e||dish(id), k=e?1:f;
+    t.kcal+=x.kcal*k; t.p+=x.p*k; t.c+=x.c*k; t.g+=x.g*k; t.f+=x.f*k; });
   return t;
 }
 const r0 = n => Math.round(n);
@@ -540,11 +552,11 @@ function digest(p){
     top: Object.entries(sy).sort((a,b)=>b[1]-a[1]).slice(0,3) };
 }
 let DRAFT=null;
-function symBlock(id,i,slot){
+function symBlock(id,i,slot,name){
   const p=S.person, d=dayDate(i), pr=S.profiles[p];
   if(d>TODAY_ISO) return `<div class="note"><h3>¿Cómo sentó?</h3><p class="muted">Podrás registrarlo el ${DAY_NAMES[i].toLowerCase()}, después de comer.</p></div>`;
   const prev=symFor(p,d,slot);
-  DRAFT={p,d,slot,dish:id,name:dish(id).name,score:prev?.score??null,sy:[...(prev?.sy||[])],note:prev?.note||""};
+  DRAFT={p,d,slot,dish:id,name:name||dish(id).name,score:prev?.score??null,sy:[...(prev?.sy||[])],note:prev?.note||""};
   return `<div class="note sym stack" id="sym-box"><h3>¿Cómo le sentó a ${esc(pr.name)}?</h3>
     <div class="scale" role="group" aria-label="Malestar de 0 a 10">${[...Array(11).keys()].map(n=>`<button class="${lvl(n)}" data-score="${n}" aria-pressed="${DRAFT.score===n}">${n}</button>`).join("")}</div>
     <div class="scale-legend"><span>0 · genial</span><span>10 · fatal</span></div>
@@ -556,7 +568,9 @@ function symBlock(id,i,slot){
 // ---------- UI helpers ----------
 const $ = s => document.querySelector(s);
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
-function toast(msg){ const r=$("#toast-root"); r.innerHTML=`<div class="toast">${esc(msg)}</div>`; clearTimeout(toast.t); toast.t=setTimeout(()=>r.innerHTML="",2800); }
+function toast(msg,act){ const r=$("#toast-root"); toast.act=act||null;
+  r.innerHTML=`<div class="toast">${esc(msg)}${act?`<button class="toast-act" id="toast-act">${esc(act.label)}</button>`:""}</div>`;
+  clearTimeout(toast.t); toast.t=setTimeout(()=>{ r.innerHTML=""; toast.act=null; },act?9000:2800); }
 let BUSY=false;
 function setBusy(msg){ BUSY=!!msg; let el=$("#busy"); if(!msg){ el?.remove(); return; }
   if(!el){ el=document.createElement("div"); el.id="busy"; el.className="busy"; document.body.appendChild(el); }
@@ -564,7 +578,7 @@ function setBusy(msg){ BUSY=!!msg; let el=$("#busy"); if(!msg){ el?.remove(); re
 async function askAI(body){
   if(!CLOUD_ENABLED||!sb||!ME){ return null; }
   if(BUSY){ toast("La IA ya está trabajando, espera un momento."); return undefined; }
-  setBusy(body.accion==="semana"?"La IA está diseñando la semana… (hasta 1 minuto)":"La IA está pensando…");
+  setBusy({semana:"La IA está diseñando la semana… (hasta 1 minuto)",cambios:"La IA está cambiando los platos… (hasta 1 minuto)",comido:"La IA está calculando lo que has comido…"}[body.accion]||"La IA está pensando…");
   try{
     const {data,error}=await sb.functions.invoke("ia",{body});
     if(error){ let m=error.message; try{ m=(await error.context.json()).error||m; }catch(e){} throw new Error(m); }
@@ -587,7 +601,12 @@ function kLabel(k){ return {fuerza:"Fuerza",cardio:"Cardio",movil:"Movil.",rest:
 
 // ---------- Vistas ----------
 function mealRow(id,i,slot){
-  const x=dish(id), p=S.person, f=factor(p,i);
+  const x=dish(id), p=S.person, f=factor(p,i), e=eatenFor(p,i,slot);
+  if(e) return `<button class="meal" data-eaten="${i}" data-slot="${slot}">
+    <div class="thumb t-${slot}">${SLOT_LETTER[slot]}</div>
+    <div><div class="slot">${SLOTS[slot]}</div><div class="title">${esc(e.name)}</div>
+    <div class="tags"><span class="tag warn">Fuera de plan</span>${(()=>{const sy=symFor(p,dayDate(i),slot);return sy?`<span class="tag ${lvl(sy.score)}">Sentó ${sy.score}/10</span>`:""})()}</div></div>
+    <div class="kcal num">${fmt(r0(e.kcal))}<small>kcal</small></div></button>`;
   return `<button class="meal" data-dish="${id}" data-day="${i}" data-slot="${slot}">
     <div class="thumb t-${slot}">${SLOT_LETTER[slot]}</div>
     <div><div class="slot">${SLOTS[slot]}</div><div class="title">${esc(x.name)}</div>
@@ -614,7 +633,7 @@ function vHoy(){
   <section class="section">
     <div class="section-head"><h2>Hoy se come</h2><button class="link" data-go="menu">Semana completa</button></div>
     ${["des","com","cen","sna"].map(s=>mealRow(d[s],i,s)).join("")}
-    <p class="muted" style="margin:0;font-size:13px">Pulsa un plato después de comerlo para apuntar cómo te sentó.</p>
+    <p class="muted" style="margin:0;font-size:13px">Pulsa un plato después de comerlo para apuntar cómo te sentó o si comiste otra cosa.</p>
   </section>
   <section class="section">
     <div class="section-head"><h2>Hoy toca</h2><button class="link" data-go="entreno">Plan semanal</button></div>
@@ -645,7 +664,9 @@ function vMenu(){
       <button class="btn ghost sm" id="share-week">${SHARE_ICON}Compartir semana</button></div>
     <div class="days" role="group" aria-label="Día">${DAY_SHORT.map((n,k)=>{const dt=new Date(monday); dt.setDate(monday.getDate()+k);
       return `<button class="day ${k===TODAY_IDX?"today":""}" data-day-pick="${k}" aria-pressed="${k===i}"><span>${n}</span><b class="num">${dt.getDate()}</b></button>`}).join("")}</div>
-    <form class="ai" id="ai-form"><input id="ai-q" placeholder="Nueva semana: «más pescado, cenas rápidas»…" aria-label="Petición a la IA para la semana"><button class="btn sm">Rehacer semana</button></form>
+    <form class="ai" id="ai-form"><input id="ai-q" placeholder="«Cambia la cena del martes», «rehaz el jueves»…" aria-label="Qué platos quieres que cambie la IA"><button class="btn sm">Cambiar con IA</button></form>
+    <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:13px">Solo cambia lo que le digas. Sin día, entiende el ${DAY_NAMES[i].toLowerCase()}.</span>
+      <button class="btn ghost sm" id="ai-day">Rehacer el ${DAY_NAMES[i].toLowerCase()} entero</button></div>
   </section>
   <section class="section">
     <div class="section-head"><h2>Raciones de ${esc(S.profiles[p].name)}</h2><span class="muted num">${fmt(r0(m.kcal))} kcal · ${r0(m.p)} g prot.</span></div>
@@ -656,7 +677,7 @@ function vMenu(){
 function shopList(){
   const map={};
   S.week.forEach((d,i)=>{
-    const f = factor("carlos",i)+factor("sofia",i);
+    const f = planFactor("carlos",i)+planFactor("sofia",i);
     Object.values(d).forEach(id=>dish(id).ing.forEach(([n,q,u,sec])=>{
       const k=n+"|"+u; if(!map[k]) map[k]={n,u,sec,q:0}; map[k].q += (u==="pizca"?0:q*f);
     }));
@@ -821,11 +842,47 @@ function openDish(id,i,slot){
       <div><h3 style="margin-bottom:6px">Ingredientes · ración estándar</h3><ul class="ing">${x.ing.map(([n,q,u])=>`<li><span>${esc(n)}</span><span class="muted num">${u==="pizca"?"al gusto":(q.toLocaleString("es-ES")+" "+u)}</span></li>`).join("")}</ul></div>
       <div><h3 style="margin-bottom:6px">Paso a paso</h3><ol class="steps">${x.steps.map(s=>`<li>${esc(s)}</li>`).join("")}</ol></div>
       ${symBlock(id,i,slot)}
+      ${dayDate(i)<=TODAY_ISO?`<div class="note stack"><div><h3>¿${esc(S.profiles[S.person].name)} ha comido otra cosa?</h3><p class="muted">Cuéntalo y queda registrado en lugar de este plato: ${CLOUD_ENABLED?"la IA calcula lo que has comido y ":""}se reajustan tus raciones del resto del día.</p></div>
+        <div class="field"><label for="eat-q">Qué has comido y cuánto</label><input id="eat-q" placeholder="«Bocadillo de tortilla y una caña»"></div>
+        <div class="row"><button class="btn me sm" data-eat="${i}" data-slot="${slot}">Registrar lo que he comido</button></div></div>`:""}
       <div class="stack"><div class="field"><label for="swap-q">¿Qué cambio quieres? (opcional)</label><input id="swap-q" placeholder="«Sin horno», «más proteína», «algo de cuchara»…"></div>
       <div class="row"><button class="btn me" data-swap="${id}" data-day="${i}" data-slot="${slot}">Cambiar este plato${CLOUD_ENABLED?" con IA":""}</button></div></div>
     </div></div></div>`;
 }
 function closeSheet(){ $("#sheet-root").innerHTML=""; }
+// Detalle de una comida registrada fuera de plan
+function openEaten(i,slot){
+  const p=S.person, pr=S.profiles[p], e=eatenFor(p,i,slot); if(!e) return;
+  $("#sheet-root").innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(e.name)}">
+    <div class="grab"></div>
+    <div class="sheet-head"><div><div class="eyebrow">${SLOTS[slot]} · ${DAY_NAMES[i]} · ${esc(pr.name)}</div><h2 style="margin-top:4px">${esc(e.name)}</h2>
+      <div class="tags"><span class="tag warn">Comido fuera de plan</span><span class="tag">Tocaba: ${esc(e.plan)}</span></div></div>
+      <button class="icon-btn" data-close aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="stack" style="margin-top:14px">
+      <div class="split"><div class="who-kcal ${p==="carlos"?"c":"s"}"><b class="num">${fmt(r0(e.kcal))} kcal</b><span>Lo que ha comido ${esc(pr.name)}</span></div>
+        <div class="who-kcal" style="background:var(--surface-2)"><b class="num">${fmt(r0(dayMacros(p,i).kcal))} kcal</b><span>Total del día · objetivo ${fmt(targetKcal(p))}</span></div></div>
+      <div class="legend"><span>Proteína ${e.p} g</span><span>Hidratos ${e.c} g</span><span>Grasa ${e.g} g</span><span>Fibra ${e.f} g</span></div>
+      <div class="note"><h3>Lo que has contado</h3><p>${esc(e.desc)}</p></div>
+      ${e.nota?`<div class="note"><h3>Valoración</h3><p>${esc(e.nota)}</p></div>`:""}
+      <p class="muted" style="margin:0;font-size:13px">Las raciones del resto de platos de ${esc(pr.name)} ese día ya están reajustadas para compensar. Solo cambia para ${esc(pr.name)}: el menú compartido sigue igual.</p>
+      ${symBlock("fuera",i,slot,e.name)}
+      <div class="row"><button class="btn ghost" data-uneat="${i}" data-slot="${slot}">Borrar el registro y volver al plan</button></div>
+    </div></div></div>`;
+}
+// Cambios puntuales con IA: platos sueltos o días concretos
+function aiChanges(peticion,objetivos){
+  if(!CLOUD_ENABLED){ toast("En la app instalada, la IA cambia los platos que le digas."); return; }
+  const semana=S.week.map(d=>Object.fromEntries(Object.entries(d).map(([s,id])=>[s,dish(id).name])));
+  askAI({accion:"cambios",peticion,objetivos,semana,diaVisto:S.day,hoy:TODAY_IDX}).then(r=>{
+    if(!r?.cambios) return;
+    if(!r.cambios.length){ toast(r.aviso||"No sé qué platos cambiar: di el día y la comida, p. ej. «la cena del martes»."); return; }
+    const prev={week:JSON.parse(JSON.stringify(S.week)),dishes:JSON.parse(JSON.stringify(S.dishes))}, stamp=Date.now().toString(36);
+    r.cambios.forEach((c,k)=>{ const id=`ai_${stamp}_${k}`; S.dishes[id]=c.plato; S.week[c.dia][c.franja]=id; });
+    pruneDishes(); pushKey("dishes",true); pushKey("week",true); render();
+    const txt=r.cambios.map(c=>`${DAY_SHORT[c.dia].toLowerCase()} ${SLOTS[c.franja].toLowerCase()}`).join(", ");
+    toast(`Cambiado: ${txt}.`,{label:"Deshacer",fn:()=>{ S.week=prev.week; S.dishes=prev.dishes; pushKey("dishes",true); pushKey("week",true); render(); toast("Cambios deshechos."); }});
+  });
+}
 
 // ---------- Calendario de la semana para compartir (WhatsApp) ----------
 const SHARE_ICON=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>`;
@@ -940,7 +997,7 @@ function sharePdf(){
 const CLOUD_ENABLED = true; // en index.html se activa automáticamente
 const SUPA_URL = "https://jlkjvopynizxpvaxwdqr.supabase.co";
 const SUPA_KEY = "sb_publishable_r90i4SuHTzwdnfrcdOOM2Q_Vqjc-Z4J"; // clave pública: la seguridad la ponen las reglas RLS
-const SHARED_KEYS = ["week","shop","extras","done","profiles","dishes","sessions"];
+const SHARED_KEYS = ["week","shop","extras","done","profiles","dishes","sessions","eaten"];
 let sb=null, ME=null; const timers={};
 function pushKey(k,now){
   if(!sb||!ME) return; clearTimeout(timers[k]);
@@ -1061,6 +1118,18 @@ document.addEventListener("click",e=>{
     const pool=Object.keys(DISHES).filter(k=>DISHES[k].slot===slot && k!==cur);
     S.week[day][slot]=pool[Math.floor(Math.random()*pool.length)];
     pushKey("week"); closeSheet(); render(); toast("Plato cambiado. En la fase 3 lo elegirá la IA según lo que le pidas."); return; }
+  if(t.closest("#toast-act")&&toast.act){ const a=toast.act; $("#toast-root").innerHTML=""; toast.act=null; a.fn(); return; }
+  if(t.closest("#ai-day")){ aiChanges($("#ai-q")?.value.trim()||"",["des","com","cen","sna"].map(franja=>({dia:S.day,franja}))); return; }
+  const eb=t.closest("[data-eat]"); if(eb){ const i=+eb.dataset.eat, slot=eb.dataset.slot, p=S.person, desc=$("#eat-q").value.trim();
+    if(!desc){ toast("Escribe qué has comido."); return; }
+    const plan=dish(S.week[i][slot]);
+    const keep=o=>{ S.eaten[`${p}|${dayDate(i)}|${slot}`]={...o,desc,plan:plan.name,ts:Date.now()}; pushKey("eaten",true);
+      closeSheet(); render(); toast(`Registrado para ${S.profiles[p].name}. El resto del día se ha reajustado.`); };
+    if(!CLOUD_ENABLED){ keep({name:desc,kcal:r0(plan.kcal*planFactor(p,i)),p:0,c:0,g:0,f:0,nota:""}); return; }
+    askAI({accion:"comido",persona:p,dia:DAY_NAMES[i],franja:slot,franjaNombre:SLOTS[slot].toLowerCase(),plan:plan.name,descripcion:desc}).then(r=>{ if(r?.comido) keep(r.comido); });
+    return; }
+  const ue=t.closest("[data-uneat]"); if(ue){ delete S.eaten[`${S.person}|${dayDate(+ue.dataset.uneat)}|${ue.dataset.slot}`]; pushKey("eaten",true); closeSheet(); render(); toast("Registro borrado: vuelve el plato del plan."); return; }
+  const me=t.closest(".meal[data-eaten]"); if(me){ openEaten(+me.dataset.eaten,me.dataset.slot); return; }
   const m=t.closest(".meal[data-dish]"); if(m){ openDish(m.dataset.dish,+m.dataset.day,m.dataset.slot); return; }
   const dp=t.closest("[data-day-pick]"); if(dp){ S.day=+dp.dataset.dayPick; render(); return; }
   const op=t.closest("[data-open]"); if(op){ const i=+op.dataset.open; S.openDay = S.openDay===i?null:i; render(); return; }
@@ -1088,7 +1157,7 @@ document.addEventListener("click",e=>{
     pr.activity=parseFloat($("#pf-act").value); pr.pace=parseFloat($("#pf-pace").value);
     pushKey("profiles"); render(); toast("Perfil guardado. Calorías y raciones recalculadas."); return; }
   if(t.closest("#pf-reset")){ const b=t.closest("#pf-reset");
-    if(b.dataset.armed){ const D=JSON.parse(JSON.stringify(DEFAULT_STATE)); SHARED_KEYS.forEach(k=>{S[k]=D[k]; pushKey(k,true);}); render(); toast("Menú, lista, entrenos y perfiles restaurados. Pesadas y síntomas se conservan."); }
+    if(b.dataset.armed){ const D=JSON.parse(JSON.stringify(DEFAULT_STATE)); SHARED_KEYS.filter(k=>k!=="eaten").forEach(k=>{S[k]=D[k]; pushKey(k,true);}); render(); toast("Menú, lista, entrenos y perfiles restaurados. Pesadas, síntomas y comidas registradas se conservan."); }
     else { b.dataset.armed="1"; b.textContent="Pulsa otra vez para confirmar"; }
     return; }
 });
@@ -1108,14 +1177,8 @@ document.addEventListener("submit",e=>{
     render(); toast(`Guardado: ${w.toLocaleString("es-ES")} kg para ${S.profiles[p].name}.`); }
   if(f.id==="add-form"){ const v=$("#add-q").value.trim(); if(v){ S.extras.push(v); pushKey("extras"); render(); } }
   if(f.id==="ai-form"){ const peticion=$("#ai-q").value.trim();
-    if(!CLOUD_ENABLED){ toast("En la app instalada, la IA rehace la semana con esta petición."); return; }
-    const anteriores=[...new Set(S.week.flatMap(d=>Object.values(d).map(id=>dish(id).name)))];
-    askAI({accion:"semana",peticion,anteriores}).then(r=>{
-      if(!r?.days) return;
-      const stamp=Date.now().toString(36); S.dishes={};
-      S.week=r.days.map((d,i)=>{ const o={}; ["des","com","cen","sna"].forEach(sl=>{ const id=`ai_${stamp}_${i}_${sl}`; S.dishes[id]=d[sl]; o[sl]=id; }); return o; });
-      S.shop={}; SHARED_KEYS.forEach(k=>["dishes","week","shop"].includes(k)&&pushKey(k,true)); render(); toast("¡Semana nueva lista! La lista de la compra se ha rehecho.");
-    }); }
+    if(!peticion){ toast("Dile qué cambiar: «la cena del martes», «rehaz el jueves»…"); return; }
+    aiChanges(peticion); }
   if(f.dataset.exForm!==undefined){ const i=+f.dataset.exForm, p=S.person;
     const peticion=f.querySelector("input").value.trim();
     if(!CLOUD_ENABLED){ toast("En la app instalada, la IA rehace esta sesión."); return; }

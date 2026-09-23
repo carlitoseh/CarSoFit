@@ -89,7 +89,35 @@ HOGAR
 - Entreno en casa sin gimnasio: juego de mancuernas de 20 kg (10 kg por mano máx.), bandas elásticas, esterilla, zapatillas. Cardio preferido: caminar, evolucionando a correr.
 Sé preciso y conciso. Las kcal y macros son estimaciones por ración estándar.`;
 
-async function gemini(prompt: string, schema: unknown, maxTokens: number, perTryMs: number, deadline: number) {
+const FRANJAS = ["des", "com", "cen", "sna"];
+const FR: Record<string, string> = { des: "desayuno", com: "comida", cen: "cena", sna: "tentempié" };
+const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+const TARGETS_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    objetivos: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: { dia: { type: "INTEGER", description: "0 lunes … 6 domingo" }, franja: { type: "STRING", enum: FRANJAS } },
+        required: ["dia", "franja"],
+      },
+    },
+    aviso: { type: "STRING", description: "si no hay nada que cambiar, explica por qué en 1 frase" },
+  },
+  required: ["objetivos"],
+};
+const EATEN_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    name: { type: "STRING", description: "nombre corto de lo que ha comido" },
+    kcal: { type: "INTEGER" }, p: { type: "INTEGER" }, c: { type: "INTEGER" }, g: { type: "INTEGER" }, f: { type: "INTEGER" },
+    nota: { type: "STRING", description: "1-2 frases: valoración y consejo para el resto del día" },
+  },
+  required: ["name", "kcal", "p", "c", "g", "f", "nota"],
+};
+
+async function gemini(prompt: string, schema: unknown, maxTokens: number, perTryMs: number, deadline: number, temperature = 0.8) {
   const key = Deno.env.get("GEMINI_API_KEY");
   if (!key) throw new Error("Falta el secreto GEMINI_API_KEY en Supabase.");
   let lastErr = "";
@@ -107,7 +135,7 @@ async function gemini(prompt: string, schema: unknown, maxTokens: number, perTry
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: RULES }] },
           contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.8, maxOutputTokens: maxTokens },
+          generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature, maxOutputTokens: maxTokens },
         }),
       });
     } catch {
@@ -190,6 +218,61 @@ Devuelve "days" con exactamente ${temas.length} elementos.`, WEEK_SCHEMA, 16000,
         des: toApp(d.des, "des"), com: toApp(d.com, "com"), cen: toApp(d.cen, "cen"), sna: toApp(d.sna, "sna"),
       }));
       return json({ model: a.model, days });
+    }
+
+    // Cambia solo los platos o días que se pidan (nunca la semana entera de golpe)
+    if (body.accion === "cambios") {
+      const semana: Record<string, string>[] = body.semana ?? [];
+      const listado = semana.map((d, i) => `${i} ${DIAS[i]}: ` + Object.entries(d).map(([s, n]) => `${s} (${FR[s]}) «${n}»`).join("; ")).join("\n");
+      let objetivos: { dia: number; franja: string }[] = body.objetivos ?? [];
+      if (!objetivos.length) {
+        const { out } = await gemini(`Menú actual de la semana (índice de día 0-6):
+${listado}
+Hoy es ${DIAS[body.hoy]} (índice ${body.hoy}). En pantalla está el ${DIAS[body.diaVisto]} (índice ${body.diaVisto}).
+Petición: «${body.peticion}».
+Di qué platos hay que sustituir. Reglas: cambia SOLO lo que la petición pida de forma explícita; si pide un día entero, sus 4 franjas (des, com, cen, sna) salvo las que excluya; si no dice día, usa el día en pantalla; "hoy" y "mañana" se cuentan desde hoy; si pide algo general (p. ej. "más pescado") elige como mucho 3 platos donde mejor encaje. Nunca más de 8.`,
+          TARGETS_SCHEMA, 1024, 30000, deadline, 0.2);
+        objetivos = out.objetivos ?? [];
+        if (!objetivos.length) return json({ cambios: [], aviso: out.aviso ?? "" });
+      }
+      const vistos = new Set<string>();
+      objetivos = objetivos.filter((o) => {
+        const k = `${o.dia}-${o.franja}`;
+        if (!Number.isInteger(o.dia) || o.dia < 0 || o.dia > 6 || !FR[o.franja] || vistos.has(k)) return false;
+        vistos.add(k); return true;
+      });
+      if (objetivos.length > 8) return json({ error: "Son demasiados platos de golpe: pide como mucho dos días completos a la vez." }, 400);
+      const porDia: Record<number, string[]> = {};
+      objetivos.forEach((o) => (porDia[o.dia] ??= []).push(o.franja));
+      const todos = semana.flatMap((d) => Object.values(d));
+      const res = await Promise.all(Object.entries(porDia).map(async ([dia, franjas]) => {
+        const d = semana[+dia] ?? {};
+        const schema = { type: "OBJECT", properties: Object.fromEntries(franjas.map((f) => [f, DISH_SCHEMA])), required: franjas };
+        const quedan = Object.entries(d).filter(([f]) => !franjas.includes(f)).map(([f, n]) => `${FR[f]} «${n}»`).join(", ");
+        const { out } = await gemini(`${ctx}
+Sustituye estos platos del ${DIAS[+dia]}:
+${franjas.map((f) => `- ${f} (${FR[f]}): ahora «${d[f] ?? "?"}»`).join("\n")}
+Platos que se quedan ese día: ${quedan || "ninguno"}.
+Resto de la semana, para no repetir: ${todos.join(", ")}.
+Petición: ${body.peticion || "otra opción distinta, igual de saludable"}.
+Devuelve un plato nuevo, distinto del actual, para cada franja indicada.`, schema, 4096 * franjas.length, 75000, deadline);
+        return franjas.filter((f) => out?.[f]).map((f) => ({ dia: +dia, franja: f, plato: toApp(out[f], f) }));
+      }));
+      return json({ cambios: res.flat() });
+    }
+
+    // Registra lo que se ha comido fuera del plan y lo estima
+    if (body.accion === "comido") {
+      const quien = body.persona === "sofia" ? "Sofía" : "Carlos";
+      const foco = body.persona === "sofia"
+        ? "avisa si lleva fructosa, polioles, cebolla o ajo u otros desencadenantes de colitis"
+        : "fíjate en la grasa saturada por el colesterol";
+      const { model, out } = await gemini(`${ctx}
+${quien} no ha seguido el plan en la ${body.franjaNombre} del ${body.dia} (tocaba «${body.plan}»). Lo que ha comido de verdad: «${body.descripcion}».
+Estima kcal y macros de LO QUE HA COMIDO, en la cantidad que describe (si no da cantidades, una ración normal de adulto en España).
+En "nota", 1-2 frases amables: valoración según su salud y objetivo (${foco}) y un consejo concreto para el resto del día.`,
+        EATEN_SCHEMA, 1024, 40000, deadline, 0.3);
+      return json({ model, comido: { name: out.name, kcal: out.kcal, p: out.p, c: out.c, g: out.g, f: out.f, nota: out.nota } });
     }
 
     if (body.accion === "plato") {
