@@ -31,7 +31,15 @@ Juego de mancuernas de 20 kg, bandas, esterilla, zapatillas. Nada de gimnasio. 4
 ## Archivos
 - `app.html`: código fuente de la app (también sirve como vista previa sin nube).
 - `build.py`: genera `index.html` (versión instalable conectada a Supabase). Ejecutar tras cada cambio en `app.html`.
+- `supabase/functions/ia/index.ts`: función de IA desplegada en Supabase (la despliega Claude con el conector de Supabase).
 - `vendor/supabase.js`: librería de Supabase (v2.117.1) incluida en local para que funcione sin CDN.
+- `publicar.py`: ejecuta build.py, copia todo a un clon del repo en `%LOCALAPPDATA%\CarSofit-publicar\repo` (subcarpeta CarSofit/) y hace commit + push. Esta carpeta de OneDrive es la fuente de verdad: lo que haya en GitHub se sobrescribe.
+
+## Publicar tras cada cambio (obligatorio)
+1. Al terminar cualquier cambio, sin esperar a que lo pidan: `python publicar.py` y comprobar que dice «Publicado en GitHub».
+2. Si cambia `supabase/functions/ia/index.ts`: desplegar la función `ia` con el conector de Supabase (verify_jwt true) y después `python publicar.py --funcion-desplegada`.
+3. Si hace falta cambiar tablas o RLS: migración con el conector de Supabase.
+4. Si cambian archivos que la app guarda sin conexión, subir la versión de `CACHE` en `sw.js`.
 - Diseño: siempre tonos claros, sin modo oscuro.
 
 ## Supabase (proyecto `carsofit`, ref jlkjvopynizxpvaxwdqr, región eu-west-3)
@@ -44,6 +52,9 @@ Juego de mancuernas de 20 kg, bandas, esterilla, zapatillas. Nada de gimnasio. 4
 ## Hoja de ruta
 1. [x] Prototipo navegable con datos de ejemplo (este archivo).
 2. [x] Supabase: tablas, seguridad, login de los dos y sincronización en tiempo real. Diario digestivo por comida.
-   [ ] Añadir el correo de Sofía a `miembros`.
-3. [ ] Edge Function + Gemini: generar semana, cambiar plato, rehacer sesión; cálculo con BEDCA; usar el diario digestivo (platos con malestar medio ≥ 5 en 3+ registros se evitan).
-4. [ ] Publicar en GitHub Pages e instalar en los dos móviles.
+   [x] Correo de Sofía añadido a `miembros`.
+3. [x] Edge Function `ia` (supabase/functions/ia/index.ts) + Gemini (secreto GEMINI_API_KEY): rehacer semana (2 llamadas en paralelo), cambiar plato, rehacer sesión de entreno. Lee perfiles y diario digestivo. Modelos en cascada: gemini-flash-latest → gemini-2.5-flash → gemini-flash-lite-latest (opcional secreto GEMINI_MODEL).
+   Platos de IA en estado.dishes, sesiones de IA en estado.sessions (clave persona-díaíndice).
+   [ ] Pendiente: calcular kcal con BEDCA (ahora son estimaciones de la IA).
+4. [x] Menú: botón «Compartir semana» que genera una imagen (canvas, PNG) con desayuno, comida y cena de los 7 días para WhatsApp; también como texto (wa.me).
+5. [x] Publicada en GitHub Pages: https://carlitoseh.github.io/CarSoFit/CarSofit/ (repo carlitoseh/CarSoFit, archivos dentro de la subcarpeta CarSofit/).
