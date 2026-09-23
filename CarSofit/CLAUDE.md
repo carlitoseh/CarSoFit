@@ -56,5 +56,5 @@ Juego de mancuernas de 20 kg, bandas, esterilla, zapatillas. Nada de gimnasio. 4
 3. [x] Edge Function `ia` (supabase/functions/ia/index.ts) + Gemini (secreto GEMINI_API_KEY): rehacer semana (2 llamadas en paralelo), cambiar plato, rehacer sesión de entreno. Lee perfiles y diario digestivo. Modelos en cascada: gemini-flash-latest → gemini-2.5-flash → gemini-flash-lite-latest (opcional secreto GEMINI_MODEL).
    Platos de IA en estado.dishes, sesiones de IA en estado.sessions (clave persona-díaíndice).
    [ ] Pendiente: calcular kcal con BEDCA (ahora son estimaciones de la IA).
-4. [x] Menú: botón «Compartir semana» que genera una imagen (canvas, PNG) con desayuno, comida y cena de los 7 días para WhatsApp; también como texto (wa.me).
+4. [x] Menú: botón «Compartir semana» que genera un folio A4 horizontal (canvas 2339×1654, días en columnas y desayuno/comida/cena en filas) como imagen PNG para WhatsApp y como PDF para imprimir (PDF hecho a mano con la imagen JPEG, sin librerías); también como texto (wa.me).
 5. [x] Publicada en GitHub Pages: https://carlitoseh.github.io/CarSoFit/CarSofit/ (repo carlitoseh/CarSoFit, archivos dentro de la subcarpeta CarSofit/).

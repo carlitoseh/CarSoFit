@@ -1,7 +1,7 @@
 # Publica CarSofit en GitHub Pages (repo carlitoseh/CarSoFit, subcarpeta CarSofit/).
 # 1) Genera index.html con build.py  2) copia los archivos a un clon local del repo  3) commit + push si hay cambios.
 # Avisa si supabase/functions/ia/index.ts ha cambiado desde el último despliegue (lo despliega Claude con el conector).
-import hashlib, os, shutil, subprocess, sys
+import hashlib, os, shutil, stat, subprocess, sys
 from datetime import datetime
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -37,13 +37,17 @@ def main():
     git("checkout", "-q", rama)
     git("reset", "-q", "--hard", f"origin/{rama}")
 
-    if os.path.isdir(DESTINO):
-        shutil.rmtree(DESTINO)
-    os.makedirs(DESTINO)
+    # Borra solo los archivos (no las carpetas: Windows a veces las bloquea) y vuelve a copiar
+    for raiz, _, archivos in os.walk(DESTINO):
+        for a in archivos:
+            ruta = os.path.join(raiz, a)
+            os.chmod(ruta, stat.S_IWRITE)
+            os.remove(ruta)
+    os.makedirs(DESTINO, exist_ok=True)
     for f in ARCHIVOS:
         shutil.copy2(os.path.join(AQUI, f), DESTINO)
     for c in CARPETAS:
-        shutil.copytree(os.path.join(AQUI, c), os.path.join(DESTINO, c),
+        shutil.copytree(os.path.join(AQUI, c), os.path.join(DESTINO, c), dirs_exist_ok=True,
                         ignore=shutil.ignore_patterns(".desplegado", "__pycache__", ".temp"))
 
     # 3) commit + push

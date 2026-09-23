@@ -850,47 +850,65 @@ function wrapLines(ctx,text,maxW,maxLines){
   keep[maxLines-1]=last; return keep;
 }
 function box(ctx,x,y,w,h,r,fill){ ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(x,y,w,h,r); else ctx.rect(x,y,w,h); ctx.fillStyle=fill; ctx.fill(); }
+// Folio A4 horizontal a 200 ppp: días en columnas, desayuno/comida/cena en filas
 async function weekImage(){
   const FD="'Bricolage Grotesque','Trebuchet MS',sans-serif", FB="Figtree,system-ui,-apple-system,sans-serif";
-  try{ await Promise.all([`800 56px ${FD}`,`700 22px ${FD}`,`600 25px ${FB}`,`700 20px ${FB}`].map(f=>document.fonts.load(f))); }catch(e){}
-  const C={bg:"#F2F5F0",card:"#FFFFFF",ink:"#15261E",muted:"#5A6B62",brand:"#1E7650",carlos:"#2E67D3",sofia:"#CF3F73",
+  try{ await Promise.all([`800 76px ${FD}`,`700 30px ${FB}`,`600 32px ${FB}`,`500 26px ${FB}`].map(f=>document.fonts.load(f))); }catch(e){}
+  const C={page:"#FFFFFF",cell:"#F2F5F0",ink:"#15261E",muted:"#5A6B62",brand:"#1E7650",carlos:"#2E67D3",sofia:"#CF3F73",
     slot:{des:["#FBEBC8","#B46A0E"],com:["#D7EBDF","#1E7650"],cen:["#DCE6F8","#2E67D3"]}};
-  const W=1080,P=44,DAYW=118,GAP=12,PAD=18,LH=32, colW=(W-2*P-DAYW-3*GAP)/3, SL=["des","com","cen"];
-  const cv=document.createElement("canvas"), ctx=cv.getContext("2d");
-  ctx.font=`600 25px ${FB}`;
-  const cells=S.week.map(d=>SL.map(s=>wrapLines(ctx,dish(d[s]).name,colW-2*PAD,4)));
-  const rowH=cells.map(r=>Math.max(118,Math.max(...r.map(l=>l.length))*LH+2*PAD));
-  const top=P+196, headH=46, first=top+headH+GAP;
-  const H=first+rowH.reduce((a,b)=>a+b,0)+GAP*6+34+40+P;
-  cv.width=W; cv.height=H;
-  ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H); ctx.textBaseline="alphabetic";
+  const W=2339,H=1654,P=96,GAP=14,PAD=20,LABW=200,SL=["des","com","cen"];
+  const colW=(W-2*P-LABW-7*GAP)/7, top=P+178, headH=84, y0=top+headH+GAP, gridB=H-P-44;
+  const rowH=(gridB-y0-2*GAP)/3, textW=colW-2*PAD-8;
+  const cv=document.createElement("canvas"), ctx=cv.getContext("2d"); cv.width=W; cv.height=H;
+  const mon=weekMonday(), names=S.week.map(d=>SL.map(s=>dish(d[s]).name));
+  // Mismo tamaño de letra en toda la tabla: el mayor con el que caben todos los platos
+  let fs=36, LH, cells;
+  for(;fs>=22;fs-=2){ LH=Math.round(fs*1.28); const max=Math.floor((rowH-2*PAD)/LH); ctx.font=`600 ${fs}px ${FB}`;
+    cells=names.map(r=>r.map(n=>wrapLines(ctx,n,textW,99))); if(cells.every(r=>r.every(l=>l.length<=max))) break; }
+  if(fs<22){ fs=22; LH=28; ctx.font=`600 ${fs}px ${FB}`; const max=Math.floor((rowH-2*PAD)/LH); cells=names.map(r=>r.map(n=>wrapLines(ctx,n,textW,max))); }
+  ctx.fillStyle=C.page; ctx.fillRect(0,0,W,H); ctx.textBaseline="alphabetic";
   // Cabecera
-  ctx.font=`800 40px ${FD}`; let x=P;
-  [["Car",C.carlos],["Sofi",C.sofia],["t",C.brand]].forEach(([t,c])=>{ ctx.fillStyle=c; ctx.fillText(t,x,P+40); x+=ctx.measureText(t).width; });
-  ctx.fillStyle=C.ink; ctx.font=`800 58px ${FD}`; ctx.fillText("Menú de la semana",P,P+118);
-  ctx.fillStyle=C.muted; ctx.font=`600 26px ${FB}`; ctx.fillText(weekRange().replace(/^./,c=>c.toUpperCase()),P,P+160);
-  // Cabecera de columnas
-  SL.forEach((s,k)=>{ const cx=P+DAYW+GAP+k*(colW+GAP); box(ctx,cx,top,colW,headH,23,C.slot[s][0]);
-    ctx.fillStyle=C.slot[s][1]; ctx.font=`700 20px ${FB}`; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText(SLOTS[s].toUpperCase(),cx+colW/2,top+headH/2+1); ctx.textAlign="left"; ctx.textBaseline="alphabetic"; });
-  // Filas por día
-  const mon=weekMonday(); let y=first;
-  S.week.forEach((d,i)=>{ const h=rowH[i], dt=new Date(mon); dt.setDate(mon.getDate()+i); const today=i===TODAY_IDX;
-    box(ctx,P,y,DAYW,h,20,today?C.brand:C.card);
-    ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillStyle=today?"rgba(255,255,255,.85)":C.muted; ctx.font=`700 20px ${FB}`; ctx.fillText(DAY_SHORT[i].toUpperCase(),P+DAYW/2,y+h/2-22);
-    ctx.fillStyle=today?"#fff":C.ink; ctx.font=`800 40px ${FD}`; ctx.fillText(String(dt.getDate()),P+DAYW/2,y+h/2+16);
+  ctx.font=`800 46px ${FD}`; let x=P;
+  [["Car",C.carlos],["Sofi",C.sofia],["t",C.brand]].forEach(([t,c])=>{ ctx.fillStyle=c; ctx.fillText(t,x,P+44); x+=ctx.measureText(t).width; });
+  ctx.fillStyle=C.ink; ctx.font=`800 76px ${FD}`; ctx.fillText("Menú de la semana",P,P+136);
+  ctx.fillStyle=C.muted; ctx.font=`600 34px ${FB}`; ctx.textAlign="right"; ctx.fillText(weekRange().replace(/^./,c=>c.toUpperCase()),W-P,P+136); ctx.textAlign="left";
+  // Días (columnas)
+  ctx.textBaseline="middle"; ctx.textAlign="center";
+  DAY_NAMES.forEach((dn,i)=>{ const cx=P+LABW+GAP+i*(colW+GAP), dt=new Date(mon), today=i===TODAY_IDX; dt.setDate(mon.getDate()+i);
+    box(ctx,cx,top,colW,headH,22,today?C.brand:C.cell);
+    ctx.fillStyle=today?"#fff":C.ink; ctx.font=`700 32px ${FB}`; ctx.fillText(`${dn} ${dt.getDate()}`,cx+colW/2,top+headH/2+2); });
+  // Franjas (filas)
+  SL.forEach((s,k)=>{ const y=y0+k*(rowH+GAP);
+    box(ctx,P,y,LABW,rowH,22,C.slot[s][0]); ctx.textAlign="center"; ctx.fillStyle=C.slot[s][1]; ctx.font=`700 30px ${FB}`;
+    ctx.fillText(SLOTS[s].toUpperCase(),P+LABW/2,y+rowH/2);
     ctx.textAlign="left";
-    SL.forEach((s,k)=>{ const cx=P+DAYW+GAP+k*(colW+GAP), L=cells[i][k];
-      box(ctx,cx,y,colW,h,20,C.card); box(ctx,cx,y+16,5,h-32,3,C.slot[s][1]);
-      ctx.fillStyle=C.ink; ctx.font=`600 25px ${FB}`;
-      L.forEach((ln,j)=>ctx.fillText(ln,cx+PAD+4,y+(h-L.length*LH)/2+LH/2+j*LH)); });
-    ctx.textBaseline="alphabetic"; y+=h+GAP; });
-  ctx.fillStyle=C.muted; ctx.font=`500 20px ${FB}`; ctx.textAlign="center";
-  ctx.fillText("CarSofit · cada uno con su ración en la app",W/2,y+34); ctx.textAlign="left";
-  const blob=await new Promise(r=>cv.toBlob(r,"image/png"));
-  const name=`menu-carsofit-${iso(mon)}.png`;
-  return {blob,url:URL.createObjectURL(blob),file:new File([blob],name,{type:"image/png"}),name};
+    S.week.forEach((d,i)=>{ const cx=P+LABW+GAP+i*(colW+GAP), L=cells[i][k];
+      box(ctx,cx,y,colW,rowH,22,C.cell); box(ctx,cx+12,y+20,6,rowH-40,3,C.slot[s][1]);
+      ctx.fillStyle=C.ink; ctx.font=`600 ${fs}px ${FB}`;
+      L.forEach((ln,j)=>ctx.fillText(ln,cx+PAD+14,y+(rowH-L.length*LH)/2+LH/2+j*LH)); }); });
+  ctx.textBaseline="alphabetic"; ctx.textAlign="center"; ctx.fillStyle=C.muted; ctx.font=`500 26px ${FB}`;
+  ctx.fillText("CarSofit · cada uno con su ración en la app",W/2,H-P+8); ctx.textAlign="left";
+  const png=await new Promise(r=>cv.toBlob(r,"image/png"));
+  const jpg=new Uint8Array(await (await new Promise(r=>cv.toBlob(r,"image/jpeg",0.92))).arrayBuffer());
+  const pdf=jpegPdf(jpg,W,H), base=`menu-carsofit-${iso(mon)}`;
+  return {url:URL.createObjectURL(png),name:base+".png",file:new File([png],base+".png",{type:"image/png"}),
+    pdfUrl:URL.createObjectURL(pdf),pdfName:base+".pdf",pdfFile:new File([pdf],base+".pdf",{type:"application/pdf"})};
+}
+// PDF de una página A4 horizontal con la imagen JPEG a folio completo (sin librerías)
+function jpegPdf(jpg,w,h){
+  const PW=841.89, PH=595.28, enc=new TextEncoder(), parts=[], offs=[]; let len=0;
+  const add=x=>{ const b=typeof x==="string"?enc.encode(x):x; parts.push(b); len+=b.length; };
+  const obj=(n,fn)=>{ offs[n]=len; add(`${n} 0 obj\n`); fn(); add("\nendobj\n"); };
+  const draw=`q ${PW} 0 0 ${PH} 0 0 cm /Im0 Do Q`;
+  add("%PDF-1.4\n");
+  obj(1,()=>add("<< /Type /Catalog /Pages 2 0 R >>"));
+  obj(2,()=>add("<< /Type /Pages /Kids [3 0 R] /Count 1 >>"));
+  obj(3,()=>add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`));
+  obj(4,()=>{ add(`<< /Type /XObject /Subtype /Image /Width ${w} /Height ${h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`); add(jpg); add("\nendstream"); });
+  obj(5,()=>add(`<< /Length ${draw.length} >>\nstream\n${draw}\nendstream`));
+  const xref=len;
+  add("xref\n0 6\n0000000000 65535 f \n"+[1,2,3,4,5].map(n=>String(offs[n]).padStart(10,"0")+" 00000 n \n").join("")+`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  return new Blob(parts,{type:"application/pdf"});
 }
 async function openShare(){
   $("#sheet-root").innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-modal="true" aria-label="Compartir el menú de la semana">
@@ -898,19 +916,25 @@ async function openShare(){
     <div class="sheet-head"><div><div class="eyebrow">${weekRange()}</div><h2 style="margin-top:4px">Menú de la semana</h2></div>
       <button class="icon-btn" data-close aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="stack" style="margin-top:14px">
-      <div class="share-prev" id="share-prev"><div class="row muted"><span class="spin" aria-hidden="true"></span>Preparando la imagen…</div></div>
+      <div class="share-prev" id="share-prev"><div class="row muted"><span class="spin" aria-hidden="true"></span>Preparando el folio…</div></div>
       <div class="row"><button class="btn me" id="share-img" disabled>${SHARE_ICON}Compartir imagen</button>
-        <button class="btn ghost" id="share-save" disabled>Guardar imagen</button>
+        <button class="btn" id="share-pdf" disabled>PDF para imprimir</button>
         <button class="btn ghost" id="share-txt">Enviar como texto</button></div>
-      <p class="muted" style="margin:0;font-size:13px">«Compartir imagen» abre WhatsApp y el resto de apps del móvil. También puedes mantener pulsada la imagen para guardarla.</p>
+      <p class="muted" style="margin:0;font-size:13px">Folio A4 en horizontal. «Compartir imagen» abre WhatsApp y el resto de apps; el PDF se abre listo para imprimir. También puedes mantener pulsada la imagen para guardarla.</p>
     </div></div></div>`;
-  if(SHARE) URL.revokeObjectURL(SHARE.url);
+  if(SHARE){ URL.revokeObjectURL(SHARE.url); URL.revokeObjectURL(SHARE.pdfUrl); }
   SHARE=await weekImage();
   const prev=$("#share-prev"); if(!prev) return;
   prev.innerHTML=`<img src="${SHARE.url}" alt="Calendario del menú: desayuno, comida y cena de lunes a domingo">`;
-  $("#share-img").disabled=false; $("#share-save").disabled=false;
+  $("#share-img").disabled=false; $("#share-pdf").disabled=false;
 }
-function saveShare(){ const a=document.createElement("a"); a.href=SHARE.url; a.download=SHARE.name; document.body.appendChild(a); a.click(); a.remove(); }
+function download(url,name){ const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); }
+// En iPhone, compartir el PDF da la opción «Imprimir»; en Android y ordenador se descarga y se abre con el visor
+function sharePdf(){
+  if(/iPhone|iPad|iPod/.test(navigator.userAgent) && navigator.canShare && navigator.canShare({files:[SHARE.pdfFile]}))
+    navigator.share({files:[SHARE.pdfFile],title:"Menú de la semana"}).catch(e=>{ if(e.name!=="AbortError") download(SHARE.pdfUrl,SHARE.pdfName); });
+  else { download(SHARE.pdfUrl,SHARE.pdfName); toast("PDF descargado: ábrelo para imprimirlo."); }
+}
 
 // ---------- Nube (Supabase) ----------
 const CLOUD_ENABLED = true; // en index.html se activa automáticamente
@@ -1047,10 +1071,10 @@ document.addEventListener("click",e=>{
   if(t.closest("#share-week")){ openShare(); return; }
   if(t.closest("#share-img")&&SHARE){
     // Se llama directamente desde el toque (sin await antes) para que Safari permita compartir
-    if(navigator.canShare&&navigator.canShare({files:[SHARE.file]})) navigator.share({files:[SHARE.file],title:"Menú de la semana"}).catch(e=>{ if(e.name!=="AbortError") saveShare(); });
-    else { saveShare(); toast("Imagen guardada: adjúntala en WhatsApp."); }
+    if(navigator.canShare&&navigator.canShare({files:[SHARE.file]})) navigator.share({files:[SHARE.file],title:"Menú de la semana"}).catch(e=>{ if(e.name!=="AbortError") download(SHARE.url,SHARE.name); });
+    else { download(SHARE.url,SHARE.name); toast("Imagen guardada: adjúntala en WhatsApp."); }
     return; }
-  if(t.closest("#share-save")&&SHARE){ saveShare(); return; }
+  if(t.closest("#share-pdf")&&SHARE){ sharePdf(); return; }
   if(t.closest("#share-txt")){ window.open("https://wa.me/?text="+encodeURIComponent(weekText()),"_blank"); return; }
   if(t.closest("#reset-list")){ S.shop={}; pushKey("shop"); render(); return; }
   if(t.closest("#copy-list")){
