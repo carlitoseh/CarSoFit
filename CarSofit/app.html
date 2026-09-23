@@ -211,6 +211,21 @@ h3{font-size:16px;font-weight:700}
 .viewer canvas{display:block}
 .chip.mus{background:var(--bad-soft);border-color:transparent;color:var(--bad)}
 .chip.mus i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#E53935;box-shadow:0 0 6px 2px rgba(229,57,53,.55);margin-right:6px;vertical-align:1px}
+.viewer{position:relative}
+.v-load{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px}
+.variants{display:flex;gap:6px;flex-wrap:wrap}
+.variants .chip[aria-pressed="true"]{background:var(--me);border-color:var(--me);color:#fff}
+.steps-ex{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.bad-list{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:14px}
+.tag.kg{background:var(--me-soft);color:var(--me)}
+.tag.up{background:var(--brand-soft);color:var(--brand)} .tag.down{background:var(--sun-soft);color:var(--warn)}
+.ex-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.ex-actions .play-mini{margin-top:0}
+.hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.hist li{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
+.hist li:first-child{border-top:0}
+.cmp{background:var(--surface-2);border-radius:14px;padding:10px 12px;font-size:14px}
+.cmp b{font-family:var(--display);font-size:18px}
 .demo{font-size:12px;color:var(--muted);text-align:center;margin-top:18px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:380px){ .form-row{grid-template-columns:1fr 1fr} .form-row .btn{grid-column:1/-1} .who button{padding:6px 9px} }
@@ -425,7 +440,19 @@ const EX = {
   rowband:["Remo con banda","3 × 15","Hombros atrás y abajo."],
   birddog:["Pájaro-perro","3 × 8 / lado","Lento y controlado."],
   breath:["Respiración diafragmática","5 min","Tumbada, mano en el abdomen. Ayuda al eje intestino-cerebro."],
-  stretch:["Estiramientos globales","10 min","Isquios, cadera, espalda."]
+  stretch:["Estiramientos globales","10 min","Isquios, cadera, espalda."],
+  towel:["Estiramiento de fascia con toalla","3 × 30 s por pie","Sentado con la pierna estirada, tira de la toalla llevando los dedos hacia ti."],
+  p_hundred:["Los cien (hundred)","10 respiraciones × 10 bombeos","Cabeza y hombros despegados, piernas en mesa; bombea los brazos 5 veces al inspirar y 5 al espirar."],
+  p_rollup:["Roll up (enrollar la columna)","6-8 repeticiones","Sube de tumbada a sentada vértebra a vértebra, alcanza los pies y baja igual de despacio."],
+  p_single:["Estiramiento de una pierna","2 × 10 por lado","Una rodilla al pecho y la otra pierna estirada a 45°; cambia sin mover el tronco."],
+  p_double:["Estiramiento de dos piernas","8 repeticiones","Desde bolita, estira brazos atrás y piernas a 45° a la vez; vuelve abrazando las rodillas."],
+  p_crisscross:["Criss-cross (giro con bicicleta)","2 × 8 por lado","Manos tras la cabeza: gira el tronco llevando el codo hacia la rodilla contraria."],
+  p_legcircle:["Círculos con una pierna","5 por sentido y pierna","Pierna al techo: dibuja círculos pequeños sin que se mueva la pelvis."],
+  p_clam:["Almeja con banda","2 × 15 por lado","De lado, rodillas flexionadas y banda sobre ellas: abre la rodilla de arriba sin girar la cadera."],
+  p_sidekick:["Patada lateral","2 × 10 por lado","De lado, pierna de arriba a la altura de la cadera: adelante con dos pulsos y atrás alargando."],
+  p_swim:["Natación (swimming)","3 × 20 s","Boca abajo, alterna brazo y pierna contrarios con movimientos cortos y rápidos."],
+  p_spine:["Estiramiento de columna","6 repeticiones","Sentada, piernas abiertas: redondea la espalda hacia delante como si pasaras por encima de una pelota."],
+  p_saw:["La sierra","6 por lado","Sentada con brazos en cruz: gira y lleva la mano al pie contrario como si serraras."]
 };
 const SESSIONS = {
   carlos:[
@@ -438,7 +465,7 @@ const SESSIONS = {
   sofia:[
     {k:"fuerza",name:"Fuerza suave + core",min:35,ex:["squatbw","glute2","rowband","birddog","breath"]},
     {k:"cardio",name:"Caminata suave",min:40,ex:["walk40","stretch"]},
-    {k:"movil",name:"Pilates y movilidad",min:40,ex:["pilates","breath"]},
+    {k:"movil",name:"Pilates de suelo",min:40,ex:["p_hundred","p_rollup","p_single","p_double","p_legcircle","p_clam","p_sidekick","p_swim","p_spine","breath"]},
     {k:"cardio",name:"Caminata a ritmo vivo",min:45,ex:["walk","stretch"]},
     {k:"fuerza",name:"Fuerza suave B",min:35,ex:["goblet","bridge","rowband","deadbug","breath"]}
   ]
@@ -453,21 +480,95 @@ const FOOD_EMO=[[/pizza/i,"🍕"],[/hamburgues/i,"🍔"],[/bocadillo|s[aá]ndwic
   [/\bbol\b/i,"🥣"],[/yogur|k[eé]fir|queso fresco/i,"🥛"],[/tostada|\bpan\b/i,"🍞"],[/kiwi/i,"🥝"],[/pl[aá]tano/i,"🍌"],[/fresa/i,"🍓"],[/ar[aá]ndano/i,"🫐"],
   [/naranja|mandarina/i,"🍊"],[/zanahoria/i,"🥕"],[/nuez|nueces|almendra|cacahuete|frutos secos/i,"🥜"]];
 function foodEmoji(name,slot){ const hit=FOOD_EMO.find(([rx])=>rx.test(name)); return hit?hit[1]:({des:"☕",sna:"🍎"}[slot]||"🍽️"); }
+// Paso a paso, errores típicos y respiración
+const EX_DETAIL={
+  goblet:{pasos:["Pies a la anchura de los hombros, puntas algo abiertas.","Mancuerna vertical pegada al pecho, codos hacia abajo.","Baja llevando la cadera atrás y abajo, rodillas en la dirección de los pies.","Sube empujando el suelo con todo el pie."],errores:["Rodillas hacia dentro","Levantar los talones","Redondear la espalda"],resp:"Coge aire al bajar y suéltalo al subir."},
+  squatbw:{pasos:["Silla o cajón detrás, pies a la anchura de la cadera.","Brazos al frente para equilibrarte.","Baja con la cadera atrás hasta rozar la silla sin sentarte del todo.","Sube empujando con los talones."],errores:["Dejarse caer en la silla","Rodillas hacia dentro"],resp:"Aire al bajar, suéltalo al subir."},
+  floorpress:{pasos:["Tumbado, rodillas flexionadas y pies apoyados.","Codos en el suelo a 45° del cuerpo, mancuernas sobre ellos.","Empuja hasta estirar los brazos sobre el pecho.","Baja despacio hasta que los codos rocen el suelo."],errores:["Codos abiertos a 90°","Arquear la zona lumbar","Rebotar con los codos"],resp:"Suelta el aire al empujar."},
+  row:{pasos:["Apoya la mano libre en una silla, piernas un poco flexionadas.","Espalda recta y casi paralela al suelo, mancuerna colgando.","Tira del codo hacia la cadera, pegado al cuerpo.","Baja estirando el brazo sin girar el tronco."],errores:["Girar el tronco para subir","Encoger el hombro","Tirar solo con el bíceps"],resp:"Suelta el aire al subir."},
+  rowband:{pasos:["Ata la banda a la altura del pecho (pomo de una puerta cerrada).","Brazos estirados y espalda recta.","Tira de los codos hacia atrás pegados al cuerpo y junta las escápulas.","Vuelve despacio sin soltar la tensión."],errores:["Encoger los hombros","Echar el tronco atrás"],resp:"Suelta el aire al tirar."},
+  bridge:{pasos:["Boca arriba, rodillas flexionadas y pies a la anchura de la cadera.","Banda por encima de las rodillas; empuja un poco hacia fuera.","Aprieta glúteos y sube la cadera hasta alinear hombros, cadera y rodillas.","Aguanta 2 s arriba y baja vértebra a vértebra."],errores:["Arquear la zona lumbar arriba","Juntar las rodillas","Empujar con la punta de los pies"],resp:"Suelta el aire al subir."},
+  plank:{pasos:["Antebrazos en el suelo, codos bajo los hombros.","Piernas estiradas sobre las puntas de los pies.","Aprieta glúteos y abdomen: cuerpo recto de la cabeza a los talones.","Mantén el tiempo sin dejar caer la cadera."],errores:["Cadera caída","Culo demasiado alto","Aguantar la respiración"],resp:"Respira corto y continuo, sin bloquear."},
+  heel:{pasos:["Parte delantera del pie en el borde de un escalón o cajón; talones al aire.","Toalla enrollada bajo los dedos para estirar la fascia.","Sube de puntillas en 3 s y aguanta 1 s arriba.","Baja en 3 s hasta que los talones queden algo por debajo del escalón."],errores:["Hacerlo deprisa o rebotando","Doblar las rodillas","Seguir si el dolor pasa de 3/10"],resp:"Respira con calma durante todo el movimiento."},
+  lunge:{pasos:["De pie, mancuernas a los lados.","Da un paso largo hacia atrás apoyando la punta del pie.","Baja hasta que la rodilla de atrás casi toque el suelo; la de delante, sobre el tobillo.","Empuja con el talón de delante para volver."],errores:["Rodilla de delante hacia dentro","Inclinar el tronco","Paso demasiado corto"],resp:"Aire al bajar, suéltalo al subir."},
+  rdl:{pasos:["De pie, rodillas un poco flexionadas y mancuernas delante de los muslos.","Lleva la cadera atrás mientras bajas las mancuernas pegadas a las piernas.","Baja hasta notar tensión detrás del muslo, espalda recta.","Sube apretando glúteos."],errores:["Redondear la espalda","Doblar mucho las rodillas","Alejar las mancuernas del cuerpo"],resp:"Coge aire al bajar y suéltalo al subir."},
+  press:{pasos:["Mancuernas a la altura de los hombros, palmas al frente.","Aprieta abdomen y glúteos.","Empuja hacia arriba hasta estirar los brazos sin bloquear los codos.","Baja controlando hasta la altura de las orejas."],errores:["Arquear la espalda","Subir los hombros hacia las orejas"],resp:"Suelta el aire al empujar."},
+  facepull:{pasos:["Ata la banda a la altura de la cara.","Brazos estirados al frente.","Tira hacia la cara abriendo los codos hacia fuera y arriba.","Junta escápulas 1 s y vuelve despacio."],errores:["Codos por debajo de los hombros","Soltar la banda de golpe"],resp:"Suelta el aire al tirar."},
+  deadbug:{pasos:["Boca arriba, brazos al techo y piernas en mesa (rodillas a 90°).","Pega la zona lumbar al suelo.","Estira a la vez un brazo atrás y la pierna contraria hasta casi rozar el suelo.","Vuelve y cambia de lado."],errores:["Despegar la lumbar","Ir deprisa"],resp:"Suelta el aire al estirar."},
+  birddog:{pasos:["En cuadrupedia: manos bajo los hombros y rodillas bajo la cadera.","Estira un brazo al frente y la pierna contraria atrás, a la altura del tronco.","Aguanta 2 s sin que la cadera gire.","Vuelve y cambia de lado."],errores:["Arquear la espalda","Girar la cadera"],resp:"Suelta el aire al estirar."},
+  mob:{pasos:["En cuadrupedia, manos bajo los hombros.","Al coger aire, hunde la espalda y mira al frente (vaca).","Al soltar el aire, redondea la espalda y mira al ombligo (gato).","Lento, vértebra a vértebra."],errores:["Hacerlo con prisa","Doblar los codos"],resp:"Inspira en la vaca, espira en el gato."},
+  fascia:{pasos:["Sentado con la pierna estirada, toalla bajo la parte delantera de la planta.","Tira llevando los dedos hacia ti, rodilla estirada: 30 s × 3.","De pie frente a la pared, pierna de atrás estirada y talón en el suelo: inclínate hasta notar el gemelo, 30 s × 3.","Termina rodando una pelota bajo el pie 1-2 min."],errores:["Rebotar al estirar","Levantar el talón de atrás","Estirar con dolor fuerte"],resp:"Respira lento y suelta el aire al notar el estiramiento."},
+  towel:{pasos:["Sentado con la pierna estirada y la toalla bajo la parte delantera de la planta.","Tira de la toalla llevando los dedos hacia ti sin doblar la rodilla.","Mantén 30 s notando la planta y el gemelo.","Afloja y repite 3 veces con cada pie."],errores:["Doblar la rodilla","Tirar con dolor fuerte"],resp:"Respira lento durante todo el estiramiento."},
+  walk:{pasos:["Zapatillas con buena amortiguación y superficie blanda si puedes.","Postura alta, mirada al frente y brazos acompañando.","Pisa con el talón y rueda hasta la punta.","Termina con los estiramientos de gemelo y fascia."],errores:["Pasos demasiado largos","Seguir con el pie dolorido más de 3/10"],resp:"Debes poder hablar, pero no cantar (zona 2)."},
+  breath:{pasos:["Boca arriba, rodillas flexionadas.","Una mano en el pecho y otra en el abdomen.","Coge aire por la nariz en 4 s hinchando el abdomen (el pecho casi no se mueve).","Suelta el aire por la boca en 6 s."],errores:["Subir los hombros al coger aire","Forzar la respiración"],resp:"Ritmo 4-6: calma el intestino (eje intestino-cerebro)."},
+  stretch:{pasos:["De pie, rodillas sueltas.","Deja caer el tronco hacia delante, vértebra a vértebra.","Brazos colgando y cuello relajado; aguanta 30 s respirando.","Sube despacio enrollando la columna."],errores:["Rebotar","Bloquear las rodillas"],resp:"Suelta el aire al bajar."},
+  p_hundred:{pasos:["Boca arriba, piernas en mesa (rodillas a 90°) o estiradas a 45° si puedes.","Despega cabeza y hombros mirando al ombligo; brazos estirados junto al cuerpo, a un palmo del suelo.","Bombea los brazos arriba y abajo con movimientos cortos y enérgicos.","5 bombeos cogiendo aire y 5 soltándolo, hasta llegar a 100."],errores:["Tirar del cuello","Despegar la zona lumbar","Bombear desde los hombros"],resp:"Inspira en 5 bombeos y espira en 5."},
+  p_rollup:{pasos:["Tumbada, piernas estiradas y juntas, pies flexionados y brazos por encima de la cabeza.","Lleva los brazos al techo, despega la cabeza y sube enrollando la columna vértebra a vértebra.","Llega sentada y estírate hacia los pies con la espalda en C.","Baja desenrollando igual de despacio."],errores:["Subir de un tirón","Levantar las piernas del suelo","Encoger los hombros"],resp:"Inspira para empezar y espira mientras subes y bajas. Si cuesta, flexiona un poco las rodillas."},
+  p_single:{pasos:["Cabeza y hombros despegados, una rodilla al pecho y la otra pierna estirada a 45°.","Mano de fuera en el tobillo y mano de dentro en la rodilla doblada.","Cambia de pierna con control, como si pedalearas despacio.","El tronco no se mueve: solo cambian las piernas."],errores:["Balancear el tronco","Bajar tanto la pierna que se arquea la lumbar"],resp:"Espira en cada cambio."},
+  p_double:{pasos:["En bolita: cabeza despegada, rodillas al pecho y manos en las espinillas.","Estira a la vez los brazos atrás junto a las orejas y las piernas a 45°.","Dibuja un círculo con los brazos hacia los lados.","Vuelve a abrazar las rodillas."],errores:["Dejar caer la cabeza al estirar","Arquear la lumbar"],resp:"Inspira al estirar y espira al volver."},
+  p_crisscross:{pasos:["Manos detrás de la cabeza, codos abiertos, cabeza y hombros despegados.","Una rodilla al pecho y la otra pierna estirada.","Gira desde las costillas llevando el codo contrario hacia la rodilla doblada.","Cambia de lado con control."],errores:["Tirar de la cabeza con las manos","Mover solo el codo","Ir deprisa"],resp:"Espira en cada giro."},
+  p_legcircle:{pasos:["Boca arriba, brazos apoyados a los lados.","Una pierna estirada al techo y la otra en el suelo (o flexionada).","Dibuja círculos pequeños con la pierna de arriba, 5 hacia cada lado.","La pelvis quieta: el círculo sale de la cadera."],errores:["Círculos demasiado grandes","Mover la pelvis","Doblar la rodilla"],resp:"Inspira media vuelta y espira la otra media."},
+  p_clam:{pasos:["De lado, cabeza apoyada en el brazo de abajo.","Cadera a 45° y rodillas a 90°, talones juntos; banda sobre las rodillas.","Sin separar los pies, abre la rodilla de arriba como una almeja.","Cierra despacio. Termina las repeticiones y cambia de lado."],errores:["Girar la pelvis hacia atrás al abrir","Separar los talones"],resp:"Espira al abrir."},
+  p_sidekick:{pasos:["De lado en línea recta, cabeza apoyada en la mano.","Piernas un poco adelantadas; sube la de arriba a la altura de la cadera.","Llévala al frente con dos pulsos, pie flexionado.","Llévala atrás alargando, pie en punta, sin arquear la espalda."],errores:["Mover la pelvis","Subir la pierna demasiado"],resp:"Inspira al ir adelante y espira al ir atrás."},
+  p_swim:{pasos:["Boca abajo, brazos estirados al frente y piernas estiradas.","Despega un poco pecho, brazos y piernas alargando el cuerpo.","Alterna brazo y pierna contrarios con movimientos cortos y rápidos.","Cuello largo, mirada al suelo."],errores:["Levantar mucho la cabeza","Doblar las rodillas","Apretar la zona lumbar"],resp:"Inspira 5 movimientos y espira 5."},
+  p_spine:{pasos:["Sentada, piernas estiradas algo más abiertas que la cadera, pies flexionados.","Brazos al frente a la altura de los hombros.","Espira y redondea la espalda hacia delante empezando por la cabeza.","Inspira y sube vértebra a vértebra hasta quedar recta."],errores:["Doblar la cadera en vez de redondear","Subir los hombros"],resp:"Espira al bajar e inspira al subir."},
+  p_saw:{pasos:["Sentada, piernas abiertas y brazos en cruz.","Gira el tronco hacia una pierna.","Estira la mano contraria hacia el pie como si serraras.","Vuelve al centro y cambia de lado."],errores:["Levantar la cadera del suelo","Encoger los hombros"],resp:"Espira al estirar hacia el pie."},
+};
+["walkint","walklong","walk40"].forEach(k=>EX_DETAIL[k]=EX_DETAIL.walk); EX_DETAIL.glute2=EX_DETAIL.bridge; EX_DETAIL.pilates=EX_DETAIL.p_hundred;
+// Material que se ve en el 3D
+const ANIM_EQUIP={squat:["Mancuerna"],floorpress:["Mancuernas","Esterilla"],row:["Mancuerna","Silla"],rowband:["Banda elástica","Puerta como anclaje"],bridge:["Esterilla","Banda en las rodillas"],plank:["Esterilla"],
+  heel:["Escalón o cajón","Toalla enrollada"],lunge:["Mancuernas"],rdl:["Mancuernas"],press:["Mancuernas"],facepull:["Banda elástica","Puerta como anclaje"],curl:["Mancuernas"],squatbw:["Silla o cajón"],
+  deadbug:["Esterilla"],birddog:["Esterilla"],mob:["Esterilla"],breath:["Esterilla"],fascia:["Pared"],towel:["Toalla","Esterilla"],clam:["Esterilla","Banda en las rodillas"],
+  hundred:["Esterilla"],rollup:["Esterilla"],single:["Esterilla"],double:["Esterilla"],crisscross:["Esterilla"],swim:["Esterilla"],sidekick:["Esterilla"],legcircle:["Esterilla"],spinestretch:["Esterilla"],saw:["Esterilla"],pilates:["Esterilla"]};
+const ANIM_LABEL={towel:"Con toalla",fascia:"Contra la pared"};
 // Ejercicio → animación del muñeco 3D (ejercicio3d.js) y músculos que se iluminan
-const ANIM_OF={goblet:"squat",squatbw:"squatbw",floorpress:"floorpress",row:"row",rowband:"rowband",bridge:"bridge",glute2:"bridge",plank:"plank",heel:"heel",lunge:"lunge",rdl:"rdl",press:"press",facepull:"facepull",deadbug:"deadbug",birddog:"birddog",fascia:"fascia",walk:"walk",walkint:"walk",walklong:"walk",walk40:"walk",mob:"mob",pilates:"pilates",breath:"breath",stretch:"stretch"};
-const ANIM_RX=[[/sentadilla|squat/i,"squat"],[/zancada|lunge|split/i,"lunge"],[/puente|hip thrust/i,"bridge"],[/plancha|plank/i,"plank"],[/face ?pull|aperturas|p[aá]jaros? invertid/i,"facepull"],[/remo/i,"row"],
+const ANIM_OF={goblet:"squat",squatbw:"squatbw",floorpress:"floorpress",row:"row",rowband:"rowband",bridge:"bridge",glute2:"bridge",plank:"plank",heel:"heel",lunge:"lunge",rdl:"rdl",press:"press",facepull:"facepull",deadbug:"deadbug",birddog:"birddog",fascia:["towel","fascia"],towel:"towel",walk:"walk",walkint:"walk",walklong:"walk",walk40:"walk",mob:"mob",pilates:"hundred",breath:"breath",stretch:"stretch",
+  p_hundred:"hundred",p_rollup:"rollup",p_single:"single",p_double:"double",p_crisscross:"crisscross",p_legcircle:"legcircle",p_clam:"clam",p_sidekick:"sidekick",p_swim:"swim",p_spine:"spinestretch",p_saw:"saw"};
+const ANIM_RX=[[/hundred|los cien/i,"hundred"],[/roll ?up|enrollar/i,"rollup"],[/una pierna|single leg/i,"single"],[/dos piernas|double leg/i,"double"],[/criss|tijera|bicicleta/i,"crisscross"],
+  [/nataci[oó]n|swimming/i,"swim"],[/almeja|clam/i,"clam"],[/patada lateral|side kick/i,"sidekick"],[/c[ií]rculos?.*pierna|leg circle/i,"legcircle"],[/sierra|\bsaw\b/i,"saw"],
+  [/estiramiento de columna|spine stretch/i,"spinestretch"],[/toalla/i,"towel"],[/sentadilla a (caja|silla)/i,"squatbw"],[/sentadilla|squat/i,"squat"],[/zancada|lunge|split/i,"lunge"],[/puente|hip thrust/i,"bridge"],[/plancha|plank/i,"plank"],[/face ?pull|aperturas|p[aá]jaros? invertid/i,"facepull"],[/remo/i,"row"],
   [/press (militar|de hombro)|press hombro|arnold/i,"press"],[/press|flexi[oó]n|push/i,"floorpress"],[/peso muerto|buenos d[ií]as/i,"rdl"],[/tal[oó]n|talones|gemelo|pantorrilla/i,"heel"],
   [/bicho muerto|dead ?bug/i,"deadbug"],[/p[aá]jaro|bird/i,"birddog"],[/curl|b[ií]ceps/i,"curl"],[/fascia/i,"fascia"],[/estir/i,"stretch"],[/respira/i,"breath"],
   [/pilates|hundred|abdominal|crunch/i,"pilates"],[/movilidad|gato|camello/i,"mob"],[/camin|andar|marcha|ruta|paseo|trot|correr|carrera/i,"walk"],[/gl[uú]teo/i,"bridge"]];
 const ANIM_MUS={squat:["cuadriceps","gluteos"],squatbw:["cuadriceps","gluteos"],floorpress:["pecho","triceps","hombros"],row:["espalda","biceps"],rowband:["espalda","biceps"],bridge:["gluteos","isquios"],
   plank:["abdomen","hombros"],heel:["gemelos","fascia"],lunge:["cuadriceps","gluteos"],rdl:["isquios","gluteos","lumbar"],press:["hombros","triceps"],facepull:["hombros","espalda"],deadbug:["abdomen"],
-  birddog:["lumbar","gluteos","abdomen"],fascia:["gemelos","fascia"],walk:["cuadriceps","gemelos","gluteos"],mob:["lumbar","abdomen"],pilates:["abdomen"],breath:["abdomen"],stretch:["isquios","lumbar"],curl:["biceps"]};
+  birddog:["lumbar","gluteos","abdomen"],fascia:["gemelos","fascia"],walk:["cuadriceps","gemelos","gluteos"],mob:["lumbar","abdomen"],pilates:["abdomen"],breath:["abdomen"],stretch:["isquios","lumbar"],curl:["biceps"],
+  hundred:["abdomen"],rollup:["abdomen"],single:["abdomen","cuadriceps"],double:["abdomen"],crisscross:["abdomen"],swim:["lumbar","gluteos","espalda"],clam:["gluteos"],sidekick:["gluteos","cuadriceps"],
+  legcircle:["abdomen","cuadriceps"],spinestretch:["lumbar","isquios"],saw:["lumbar","isquios"],towel:["fascia","gemelos"]};
 const MUS_NAME={cuadriceps:"Cuádriceps",gluteos:"Glúteos",pecho:"Pecho",triceps:"Tríceps",hombros:"Hombros",espalda:"Espalda",biceps:"Bíceps",isquios:"Isquiotibiales",abdomen:"Abdomen",gemelos:"Gemelos",fascia:"Fascia plantar",lumbar:"Zona lumbar"};
 function exInfo(e){ return typeof e==="string"?EX[e]:[e.name,e.dose,e.how]; }
-function animOf(e){ if(typeof e==="string"&&ANIM_OF[e]) return ANIM_OF[e]; const n=exInfo(e)[0]; const hit=ANIM_RX.find(([rx])=>rx.test(n)); return hit?hit[1]:null; }
+function animsOf(e){ if(typeof e==="string"&&ANIM_OF[e]) return [].concat(ANIM_OF[e]); const n=exInfo(e)[0]; const hit=ANIM_RX.find(([rx])=>rx.test(n)); return hit?[hit[1]]:[]; }
+function animOf(e){ return animsOf(e)[0]||null; }
 function exEmoji(name,anim){
   if(/correr|trot|carrera/i.test(name)) return "🏃";
-  return {walk:"🚶",breath:"🌬️",stretch:"🤸",fascia:"🤸",mob:"🧘",pilates:"🧘",deadbug:"🧘",birddog:"🧘",plank:"🧘"}[anim]||"🏋️";
+  return {walk:"🚶",breath:"🌬️",stretch:"🤸",fascia:"🤸",towel:"🤸",mob:"🧘",pilates:"🧘",deadbug:"🧘",birddog:"🧘",plank:"🧘",hundred:"🧘",rollup:"🧘",single:"🧘",double:"🧘",crisscross:"🧘",swim:"🧘",clam:"🧘",sidekick:"🧘",legcircle:"🧘",spinestretch:"🧘",saw:"🧘"}[anim]||"🏋️";
+}
+// ---------- Pesos de los ejercicios ----------
+const LOAD_ANIMS=["squat","floorpress","row","rdl","press","lunge","curl"];
+function loadable(e){ return LOAD_ANIMS.includes(animOf(e)) || /mancuerna|pesa|kg|kettlebell|barra|disco/i.test(exInfo(e).join(" ")); }
+function loadsOf(p,name){ return S.loads.filter(l=>l.p===p&&l.ex===name).sort((a,b)=>a.d<b.d?-1:1); }
+const kg = n => (+n).toLocaleString("es-ES",{maximumFractionDigits:1})+" kg";
+const shortDate = d => new Date(d+"T12:00").toLocaleDateString("es-ES",{day:"numeric",month:"short"});
+function deltaTag(d){ if(d==null||Math.abs(d)<0.05) return d==null?"":`<span class="tag">= igual</span>`; return `<span class="tag ${d>0?"up":"down"}">${d>0?"↑ +":"↓ "}${kg(d)}</span>`; }
+function loadChips(p,e){
+  const L=loadsOf(p,exInfo(e)[0]); if(!L.length) return "";
+  const last=L.at(-1), prev=L.at(-2);
+  return `<span class="tag kg">⚖️ ${kg(last.w)}${last.reps?` × ${last.reps}`:""}</span>${prev?deltaTag(last.w-prev.w):""}`;
+}
+function loadBox(p,e,i){
+  const name=exInfo(e)[0], L=loadsOf(p,name), last=L.at(-1), prev=L.at(-2), first=L[0];
+  const d=dayDate(i)<=TODAY_ISO?dayDate(i):TODAY_ISO;
+  let cmp="";
+  if(last&&prev){ const dd=last.w-prev.w, pc=prev.w?Math.round(dd/prev.w*100):0;
+    cmp=`<div class="cmp">Última vez (${shortDate(last.d)}): <b>${kg(last.w)}</b> · antes (${shortDate(prev.d)}): ${kg(prev.w)}<br>${Math.abs(dd)<0.05?"Mismo peso que la sesión anterior.":dd>0?`Has subido <b>${kg(dd)}</b> (+${pc} %).`:`Has bajado ${kg(-dd)} (${pc} %).`}${L.length>2?` Desde el primer registro (${shortDate(first.d)}): ${deltaTag(last.w-first.w)}`:""}</div>`; }
+  else if(last) cmp=`<div class="cmp">Primer registro: <b>${kg(last.w)}</b> el ${shortDate(last.d)}. La próxima vez verás cuánto has subido.</div>`;
+  return `<div class="note stack" id="load-box"><div><h3>⚖️ Peso que usas</h3><p class="muted">Apunta el peso de cada mancuerna y las repeticiones del ${new Date(d+"T12:00").toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"})}.</p></div>
+    ${cmp}
+    <div class="grid2"><div class="field"><label for="ld-w">Peso (kg)</label><input id="ld-w" inputmode="decimal" placeholder="${last?String(last.w).replace(".",","):"10"}"></div>
+      <div class="field"><label for="ld-r">Repeticiones</label><input id="ld-r" inputmode="numeric" placeholder="${last?.reps??12}"></div></div>
+    <div class="row"><button class="btn me sm" id="ld-save" data-ex="${esc(name)}" data-date="${d}">Guardar peso</button></div>
+    ${L.length?`<ul class="hist">${[...L].reverse().slice(0,8).map((l,k,arr)=>`<li><span>${shortDate(l.d)}</span><span class="num">${kg(l.w)}${l.reps?` × ${l.reps}`:""} ${arr[k+1]?deltaTag(l.w-arr[k+1].w):""}</span></li>`).join("")}</ul>`:""}
+  </div>`;
 }
 
 function dish(id){ return DISHES[id] || (S.dishes&&S.dishes[id]) || {slot:"com",name:"Plato no disponible",kcal:0,p:0,c:0,g:0,f:0,time:"",tool:"",ing:[],steps:[],why:"",micro:"",sofia:""}; }
@@ -487,7 +588,7 @@ const DEFAULT_STATE = {
   week:JSON.parse(JSON.stringify(DEFAULT_WEEK)),
   shop:{}, extras:[],
   done:{},
-  symptoms:[],
+  symptoms:[], loads:[],
   dishes:{}, sessions:{}, eaten:{},
   profiles:{
     carlos:{name:"Carlos",sex:"h",age:28,height:176,activity:1.4,goal:"Perder grasa y tonificar",pace:0.5,
@@ -506,7 +607,7 @@ const KEY="carsofit-v2";
 let S;
 try{ S = JSON.parse(localStorage.getItem(KEY)) || null; }catch(e){ S=null; }
 if(!S) S = JSON.parse(JSON.stringify(DEFAULT_STATE));
-S.day = TODAY_IDX; S.view = S.view || "hoy"; S.symptoms = S.symptoms || []; S.dishes = S.dishes || {}; S.sessions = S.sessions || {}; S.eaten = S.eaten || {};
+S.day = TODAY_IDX; S.view = S.view || "hoy"; S.symptoms = S.symptoms || []; S.dishes = S.dishes || {}; S.sessions = S.sessions || {}; S.eaten = S.eaten || {}; S.loads = S.loads || [];
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
 
 // ---------- Cálculos ----------
@@ -742,7 +843,7 @@ function vEntreno(){
     ${DAY_NAMES.map((dn,i)=>{const s=sessionForDay(p,i); const open=i===S.openDay;
       if(!s) return `<div class="session"><button disabled style="cursor:default"><div class="dchip k-rest">${DAY_SHORT[i]}</div><div><h3>Descanso</h3><div class="meta">Paseo libre y estiramientos</div></div><span></span></button></div>`;
       const kids=s.ex.map((e,j)=>{const key=`${p}-${i}-${j}`; const x=exInfo(e), a=animOf(e);
-        return `<div class="exi"><input type="checkbox" id="ex-${key}" data-ex="${key}" ${S.done[key]?"checked":""} aria-label="Hecho: ${esc(x[0])}"><div><b><span class="ico" aria-hidden="true">${exEmoji(x[0],a)}</span>${esc(x[0])}</b><p>${esc(x[2])}</p>${a?`<button class="play-mini" data-exview="${i}-${j}">▶ Ver cómo se hace</button>`:""}</div><span class="dose">${x[1]}</span></div>`}).join("");
+        return `<div class="exi"><input type="checkbox" id="ex-${key}" data-ex="${key}" ${S.done[key]?"checked":""} aria-label="Hecho: ${esc(x[0])}"><div><b><span class="ico" aria-hidden="true">${exEmoji(x[0],a)}</span>${esc(x[0])}</b><p>${esc(x[2])}</p><div class="ex-actions">${a?`<button class="play-mini" data-exview="${i}-${j}">▶ Ver cómo se hace</button>`:""}${loadable(e)?`<button class="play-mini" data-exload="${i}-${j}">⚖️ Peso</button>${loadChips(p,e)}`:""}</div></div><span class="dose">${x[1]}</span></div>`}).join("");
       const nd=s.ex.filter((e,j)=>S.done[`${p}-${i}-${j}`]).length;
       return `<div class="session ${i===TODAY_IDX?"today":""}"><button data-open="${i}" aria-expanded="${open}">
         <div class="dchip k-${s.k}">${DAY_SHORT[i]}<br>${kLabel(s.k)}</div>
@@ -790,6 +891,7 @@ function personPanel(p){
     ${e?`<div class="calc"><span>IMC</span><span>${e.bmi.toFixed(1).replace(".",",")}</span><span>Metabolismo basal (Mifflin-St Jeor)</span><span>${fmt(e.bmr)} kcal</span><span>Gasto diario estimado</span><span>${fmt(e.tdee)} kcal</span><span>Objetivo diario</span><span>${fmt(e.target)} kcal</span><span>Proteína diaria</span><span>${e.protein} g</span></div>`
       :`<div class="alert"><b>Faltan edad y altura.</b> Añádelas en el perfil y se calculan sus calorías. Mientras, se usan 1.800 kcal.</div>`}
     ${digBlock(p)}
+    ${loadsBlock(p)}
     ${weighForm(p)}
   </div>`;
 }
@@ -804,6 +906,12 @@ function digBlock(p){
     ${g.bad.length?`<h3 style="font-size:14px">A vigilar</h3><ul>${g.bad.map(li).join("")}</ul>`:""}
     ${g.good.length?`<h3 style="font-size:14px">Le sientan bien</h3><ul>${g.good.map(li).join("")}</ul>`:""}
     <p class="muted" style="margin:0;font-size:12px">Con 3 registros o más de un plato, la IA lo tendrá en cuenta al hacer el menú (fase 3).</p></div>`;
+}
+function loadsBlock(p){
+  const names=[...new Set(S.loads.filter(l=>l.p===p).map(l=>l.ex))];
+  if(!names.length) return `<div class="dig"><h3>Pesos en los ejercicios</h3><p class="muted" style="margin:0;font-size:13px">Sin registros todavía. Se apuntan desde cada ejercicio con mancuernas (botón ⚖️ Peso).</p></div>`;
+  return `<div class="dig"><h3>Pesos en los ejercicios</h3><ul>${names.map(n=>{ const L=loadsOf(p,n), f=L[0], l=L.at(-1);
+    return `<li><span>${esc(n)}</span><span class="num">${L.length>1?`${kg(f.w)} → `:""}<b>${kg(l.w)}</b> ${L.length>1?deltaTag(l.w-f.w):""}</span></li>`; }).join("")}</ul></div>`;
 }
 function vProgreso(){
   return `<section class="stack" style="margin-top:6px"><div><div class="eyebrow">Seguimiento compartido</div><h1>Progreso</h1></div></section>
@@ -863,29 +971,46 @@ function openDish(id,i,slot){
       <div class="row"><button class="btn me" data-swap="${id}" data-day="${i}" data-slot="${slot}">Cambiar este plato${CLOUD_ENABLED?" con IA":""}</button></div></div>
     </div></div></div>`;
 }
-let VIEWER=null;
+let VIEWER=null, currentEx=null;
 function closeSheet(){ VIEWER?.dispose(); VIEWER=null; $("#sheet-root").innerHTML=""; }
-async function openExercise(i,j){
+async function openExercise(i,j,toLoad){
   const p=S.person, s=sessionForDay(p,i), e=s?.ex[j]; if(!e) return;
-  const x=exInfo(e), a=animOf(e), mus=ANIM_MUS[a]||[];
+  currentEx={ex:e,i};
+  const x=exInfo(e), as=animsOf(e), a=as[0], key=typeof e==="string"?e:null, det=(key&&EX_DETAIL[key])||(a&&EX_DETAIL["p_"+a])||null;
+  const equip=[...new Set(as.flatMap(v=>ANIM_EQUIP[v]||[]))], mus=[...new Set(as.flatMap(v=>ANIM_MUS[v]||[]))];
   $("#sheet-root").innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(x[0])}">
     <div class="grab"></div>
-    <div class="sheet-head"><div><div class="eyebrow">${DAY_NAMES[i]} · ${esc(s.name)}</div><h2 style="margin-top:4px">${exEmoji(x[0],a)} ${esc(x[0])}</h2>
-      <div class="tags"><span class="tag">${esc(x[1])}</span></div></div>
+    <div class="sheet-head"><div><div class="eyebrow">${DAY_NAMES[i]} · ${esc(s.name)} · ${esc(S.profiles[p].name)}</div><h2 style="margin-top:4px">${exEmoji(x[0],a)} ${esc(x[0])}</h2>
+      <div class="tags"><span class="tag">${esc(x[1])}</span>${loadable(e)?loadChips(p,e):""}</div></div>
       <button class="icon-btn" data-close aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="stack" style="margin-top:14px">
-      <div class="viewer" id="viewer"><div class="row muted"><span class="spin" aria-hidden="true"></span>Cargando el muñeco 3D…</div></div>
-      <div class="row" style="justify-content:space-between"><button class="btn me" id="v-play" disabled>▶ Ver el movimiento</button><span class="muted" style="font-size:12px">Arrastra para girarlo</span></div>
+      ${a?`${as.length>1?`<div class="variants" role="group" aria-label="Variante">${as.map((v,k)=>`<button class="chip" data-variant="${v}" aria-pressed="${k===0}">${ANIM_LABEL[v]||v}</button>`).join("")}</div>`:""}
+      <div class="viewer" id="viewer"><div class="v-load"><div class="row"><span class="spin" aria-hidden="true"></span>Cargando a ${esc(S.profiles[p].name)} en 3D…</div></div></div>
+      <div class="row" style="justify-content:space-between"><button class="btn me" id="v-play" disabled>▶ Ver el movimiento</button><span class="muted" style="font-size:12px">Arrastra para girarlo</span></div>`:""}
+      ${equip.length?`<div class="note"><h3>Material</h3><div class="chips" style="margin-top:8px">${equip.map(q=>`<span class="chip x">${esc(q)}</span>`).join("")}</div></div>`:""}
       ${mus.length?`<div class="note"><h3>Músculos que trabajas</h3><div class="chips" style="margin-top:8px">${mus.map(m=>`<span class="chip mus"><i></i>${MUS_NAME[m]}</span>`).join("")}</div></div>`:""}
-      <div class="note"><h3>Cómo se hace</h3><p>${esc(x[2])}</p></div>
-      ${p==="carlos"&&/walk|heel|lunge|squat/.test(a)?`<p class="muted" style="margin:0;font-size:13px">Fascitis plantar: sin saltos ni impactos; si molesta el pie más de 3/10, baja la intensidad.</p>`:""}
+      <div class="note"><h3>Cómo se hace</h3><p>${esc(x[2])}</p>
+        ${det?`<ol class="steps-ex">${det.pasos.map(t=>`<li>${esc(t)}</li>`).join("")}</ol>`:""}</div>
+      ${det?`<div class="note"><h3>Errores típicos</h3><ul class="bad-list">${det.errores.map(t=>`<li>${esc(t)}</li>`).join("")}</ul><p style="margin-top:8px"><b>Respiración:</b> ${esc(det.resp)}</p></div>`:""}
+      ${loadable(e)?loadBox(p,e,i):""}
+      ${p==="carlos"&&/walk|heel|lunge|squat/.test(a||"")?`<p class="muted" style="margin:0;font-size:13px">Fascitis plantar: sin saltos ni impactos; si molesta el pie más de 3/10, baja la intensidad.</p>`:""}
+      ${p==="sofia"&&s.k==="movil"?`<p class="muted" style="margin:0;font-size:13px">En brote de colitis, haz solo la respiración diafragmática y el gato-vaca.</p>`:""}
     </div></div></div>`;
+  if(toLoad) setTimeout(()=>$("#load-box")?.scrollIntoView({behavior:"smooth",block:"start"}),60);
+  if(a) mountVariant(a,ANIM_MUS[a]||[]);
+}
+async function mountVariant(a,mus){
+  VIEWER?.dispose(); VIEWER=null;
+  const host=$("#viewer"); if(!host) return;
+  host.querySelector("canvas")?.remove();
+  if(!host.querySelector(".v-load")) host.insertAdjacentHTML("beforeend",`<div class="v-load"><div class="row"><span class="spin" aria-hidden="true"></span>Cargando…</div></div>`);
+  const btn=$("#v-play"); btn.disabled=true; btn.textContent="▶ Ver el movimiento";
   try{
     const mod=await import("./ejercicio3d.js");
-    const host=$("#viewer"); if(!host) return;
-    host.innerHTML=""; VIEWER=mod.mountViewer(host,a,mus);
-    $("#v-play").disabled=false;
-  }catch(err){ const host=$("#viewer"); if(host) host.innerHTML=`<p class="muted" style="padding:16px;text-align:center">No se pudo cargar la animación. Comprueba la conexión y vuelve a abrirla.</p>`; }
+    const v=await mod.mountViewer(host,a,mus,S.person);
+    if(!document.body.contains(host)||VIEWER){ v.dispose(); return; }
+    VIEWER=v; host.querySelector(".v-load")?.remove(); btn.disabled=false;
+  }catch(err){ if(document.body.contains(host)) host.innerHTML=`<p class="muted" style="padding:16px;text-align:center">No se pudo cargar la animación. Comprueba la conexión y vuelve a abrirla.</p>`; }
 }
 // Detalle de una comida registrada fuera de plan
 function openEaten(i,slot){
@@ -1050,6 +1175,11 @@ function cloudSym(r){ if(!sb||!ME) return;
     .then(({error})=>{ if(error) toast("No se pudo guardar el registro: "+error.message); }); }
 async function pullLogs(){ const {data}=await sb.from("mediciones").select("persona,fecha,peso,grasa");
   if(data) S.logs=data.map(r=>({p:r.persona,d:r.fecha,w:+r.peso,bf:r.grasa==null?null:+r.grasa})); }
+function cloudLoad(r){ if(!sb||!ME) return;
+  sb.from("cargas").upsert({persona:r.p,fecha:r.d,ejercicio:r.ex,peso:r.w,reps:r.reps},{onConflict:"persona,fecha,ejercicio"})
+    .then(({error})=>{ if(error) toast("No se pudo guardar el peso: "+error.message); }); }
+async function pullLoads(){ const {data}=await sb.from("cargas").select("persona,fecha,ejercicio,peso,reps");
+  if(data) S.loads=data.map(r=>({p:r.persona,d:r.fecha,ex:r.ejercicio,w:+r.peso,reps:r.reps})); }
 async function pullSym(){ const {data}=await sb.from("sintomas").select("persona,fecha,franja,plato_id,plato_nombre,malestar,sintomas,nota");
   if(data) S.symptoms=data.map(r=>({p:r.persona,d:r.fecha,slot:r.franja,dish:r.plato_id,name:r.plato_nombre,score:r.malestar,sy:r.sintomas||[],note:r.nota||""})); }
 async function pullAll(){
@@ -1057,7 +1187,7 @@ async function pullAll(){
   if(error){ toast("Sin conexión: usando los datos guardados en el móvil."); return; }
   const got={}; data.forEach(r=>got[r.clave]=r.valor);
   SHARED_KEYS.forEach(k=>{ if(k in got) S[k]=got[k]; else pushKey(k,true); });
-  await Promise.all([pullLogs(),pullSym()]);
+  await Promise.all([pullLogs(),pullSym(),pullLoads()]);
 }
 function softRender(){
   const a=document.activeElement;
@@ -1072,6 +1202,7 @@ function subscribe(){
       const r=pl.new; if(!r?.clave || r.actualizado_por===ME.persona) return; S[r.clave]=r.valor; softRender(); })
     .on("postgres_changes",{event:"*",schema:"public",table:"mediciones"},()=>pullLogs().then(softRender))
     .on("postgres_changes",{event:"*",schema:"public",table:"sintomas"},()=>pullSym().then(softRender))
+    .on("postgres_changes",{event:"*",schema:"public",table:"cargas"},()=>pullLoads().then(softRender))
     .subscribe();
 }
 function showLogin(msg){
@@ -1170,6 +1301,17 @@ document.addEventListener("click",e=>{
   const m=t.closest(".meal[data-dish]"); if(m){ openDish(m.dataset.dish,+m.dataset.day,m.dataset.slot); return; }
   const dp=t.closest("[data-day-pick]"); if(dp){ S.day=+dp.dataset.dayPick; render(); return; }
   const xv=t.closest("[data-exview]"); if(xv){ const [i,j]=xv.dataset.exview.split("-").map(Number); openExercise(i,j); return; }
+  const xl=t.closest("[data-exload]"); if(xl){ const [i,j]=xl.dataset.exload.split("-").map(Number); openExercise(i,j,true); return; }
+  const vr=t.closest("[data-variant]"); if(vr){ document.querySelectorAll("[data-variant]").forEach(b=>b.setAttribute("aria-pressed",b===vr)); mountVariant(vr.dataset.variant,ANIM_MUS[vr.dataset.variant]||[]); return; }
+  if(t.closest("#ld-save")){ const b=t.closest("#ld-save"), p=S.person;
+    const w=parseFloat($("#ld-w").value.replace(",",".")), reps=parseInt($("#ld-r").value);
+    if(isNaN(w)||w<0||w>300){ toast("Escribe el peso en kg, por ejemplo 10 o 7,5."); return; }
+    const prev=loadsOf(p,b.dataset.ex).filter(l=>l.d<b.dataset.date).at(-1);
+    const rec={p,d:b.dataset.date,ex:b.dataset.ex,w,reps:isNaN(reps)?null:reps};
+    S.loads=S.loads.filter(l=>!(l.p===p&&l.d===rec.d&&l.ex===rec.ex)); S.loads.push(rec); cloudLoad(rec); save();
+    toast(prev? (w>prev.w?`¡Subes de ${kg(prev.w)} a ${kg(w)}! (+${kg(w-prev.w)})`: w<prev.w?`Guardado: ${kg(w)} (la vez anterior ${kg(prev.w)})`:`Guardado: mismo peso que la vez anterior (${kg(w)})`) : `Guardado: ${kg(w)}. La próxima vez verás la comparación.`);
+    const host=$("#load-box"); if(host){ const tmp=document.createElement("div"); const e=currentEx; tmp.innerHTML=loadBox(p,e.ex,e.i); host.replaceWith(tmp.firstElementChild); }
+    render(); return; }
   if(t.closest("#v-play")&&VIEWER){ const on=VIEWER.toggle(); $("#v-play").textContent=on?"❚❚ Pausa":"▶ Ver el movimiento"; return; }
   const op=t.closest("[data-open]"); if(op){ const i=+op.dataset.open; S.openDay = S.openDay===i?null:i; render(); return; }
   const exr=t.closest("[data-ex-reset]"); if(exr){ const i=+exr.dataset.exReset; delete S.sessions[`${S.person}-${i}`];

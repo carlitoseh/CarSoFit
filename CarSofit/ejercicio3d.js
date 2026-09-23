@@ -1,37 +1,48 @@
-// CarSofit · visor 3D de ejercicios: maniquí articulado, músculo trabajado en rojo brillante y movimiento con play.
-// Se carga solo al abrir un ejercicio (import dinámico desde app.html). Three.js va en vendor/ para funcionar sin CDN.
+// CarSofit · visor 3D de ejercicios con personas realistas (hombre para Carlos, mujer para Sofía).
+// Los modelos (modelos/*.glb) tienen esqueleto humanoide estándar; aquí se mueven sus huesos con las posturas de cada ejercicio.
+// El músculo trabajado brilla en rojo, se ve el material (mancuernas, banda, cajón, toalla, silla, esterilla, pared) y se gira arrastrando.
 import * as THREE from "./vendor/three.module.min.js";
+import { GLTFLoader } from "./vendor/GLTFLoader.js";
 
 const D = Math.PI / 180;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ---------- Posturas ----------
-// Ángulos en grados. pitch: inclinación del cuerpo entero (90 boca abajo, -90 boca arriba).
-// sh: flexión de hombro (brazo adelante), ab: abducción (brazo al lado), el: flexión de codo, elz: antebrazo hacia arriba con el brazo abierto.
-// hip: flexión de cadera, hab: abducción de cadera, knee: flexión de rodilla, ank: flexión plantar (si falta, pie plano en el suelo).
-const KEYS = ["pitch", "spine", "head", "shL", "shR", "abL", "abR", "elL", "elR", "elzL", "elzR", "hipL", "hipR", "habL", "habR", "kneeL", "kneeR", "ankL", "ankR"];
+// Ángulos en grados, en los ejes del cuerpo de pie mirando al frente:
+// pitch: inclinación del cuerpo entero (90 boca abajo, -90 boca arriba) · roll: de lado (90 = tumbado sobre el costado derecho)
+// spine: flexión del tronco (repartida en 3 vértebras) · tw: giro del tronco · head: flexión de cuello y cabeza
+// sh: flexión de hombro · ab: abducción de hombro · el: flexión de codo · elz: antebrazo hacia arriba con el brazo abierto
+// hip: flexión de cadera · hab: abducción de cadera · knee: flexión de rodilla · ank: flexión plantar (si falta, pie plano en el suelo)
+const KEYS = ["pitch", "roll", "yaw", "spine", "tw", "head", "shL", "shR", "abL", "abR", "elL", "elR", "elzL", "elzR",
+  "hipL", "hipR", "habL", "habR", "kneeL", "kneeR", "ankL", "ankR"];
 const STAND = { abL: 6, abR: 6 };
 const SUPINE_KNEES = { pitch: -90, hipL: 60, hipR: 60, kneeL: 108, kneeR: 108, abL: 12, abR: 12 };
 const QUAD = { pitch: 90, shL: 90, shR: 90, hipL: 90, hipR: 90, kneeL: 90, kneeR: 90, ankL: 90, ankR: 90 };
 const DEADBUG = { pitch: -90, shL: 90, shR: 90, hipL: 90, hipR: 90, kneeL: 90, kneeR: 90, ankL: 0, ankR: 0 };
 const GOBLET = { shL: 30, shR: 30, elL: 120, elR: 120, abL: -14, abR: -14 };
+// Pilates: tumbada con cabeza y hombros despegados y pies en punta
+const CURL = { pitch: -90, spine: 30, head: 15, ankL: 30, ankR: 30, abL: 8, abR: 8 };
+// Tumbada de lado (sobre el costado derecho), cabeza apoyada en el brazo de abajo
+const SIDE = { roll: 90, shR: 175, elR: 20, shL: 85, elL: 15, abL: 5, ankL: 10, ankR: 10 };
+// Sentada con piernas estiradas
+const SEAT = { hipL: 90, hipR: 90, ankL: -15, ankR: -15 };
 
 const ANIMS = {
   squat: { frames: [GOBLET, { ...GOBLET, hipL: 100, hipR: 100, kneeL: 112, kneeR: 112, spine: 34, habL: 10, habR: 10 }], db: "chest", anchor: "feet" },
-  squatbw: { frames: [{ shL: 80, shR: 80, abL: 6, abR: 6 }, { shL: 85, shR: 85, abL: 6, abR: 6, hipL: 95, hipR: 95, kneeL: 105, kneeR: 105, spine: 30, habL: 10, habR: 10 }], anchor: "feet" },
+  squatbw: { frames: [{ shL: 80, shR: 80, abL: 6, abR: 6 }, { shL: 85, shR: 85, abL: 6, abR: 6, hipL: 95, hipR: 95, kneeL: 100, kneeR: 100, spine: 30, habL: 10, habR: 10 }], chair: true, anchor: "feet", az: 70 },
   floorpress: { frames: [{ ...SUPINE_KNEES, abL: 65, abR: 65, elL: 90, elR: 90 }, { ...SUPINE_KNEES, shL: 90, shR: 90, abL: 8, abR: 8 }], db: "hands", mat: true, az: 78 },
   row: {
     frames: [
-      { pitch: 55, hipL: 70, hipR: 70, kneeL: 25, kneeR: 25, spine: 5, head: -25, shL: 60, elL: 20, shR: 55, elR: 5, abL: 6, abR: 6 },
-      { pitch: 55, hipL: 70, hipR: 70, kneeL: 25, kneeR: 25, spine: 5, head: -25, shL: 60, elL: 20, shR: -5, elR: 75, abL: 6, abR: 10 },
-    ], db: "right", anchor: "feet", az: 70,
+      { pitch: 55, hipL: 70, hipR: 70, kneeL: 25, kneeR: 25, spine: 5, head: -25, shL: 62, elL: 15, shR: 55, elR: 5, abL: 6, abR: 6 },
+      { pitch: 55, hipL: 70, hipR: 70, kneeL: 25, kneeR: 25, spine: 5, head: -25, shL: 62, elL: 15, shR: -5, elR: 75, abL: 6, abR: 10 },
+    ], db: "right", bench: true, anchor: "feet", az: 62,
   },
   rowband: { frames: [{ shL: 78, shR: 78, abL: 4, abR: 4 }, { shL: -12, shR: -12, elL: 95, elR: 95, abL: 4, abR: 4 }], band: [0, 1.1, 1.3], anchor: "feet", az: 60 },
   bridge: {
     frames: [
-      { pitch: -90, hipL: 60, hipR: 60, kneeL: 110, kneeR: 110, abL: 12, abR: 12 },
-      { pitch: -115, hipL: 0, hipR: 0, kneeL: 115, kneeR: 115, head: 25, shL: -25, shR: -25, abL: 12, abR: 12 },
-    ], mat: true, anchor: "feet", az: 82,
+      { pitch: -90, hipL: 60, hipR: 60, kneeL: 110, kneeR: 110, abL: 12, abR: 12, habL: 6, habR: 6 },
+      { pitch: -115, hipL: 0, hipR: 0, kneeL: 115, kneeR: 115, head: 25, shL: -25, shR: -25, abL: 12, abR: 12, habL: 9, habR: 9 },
+    ], mat: true, kneeBand: true, anchor: "feet", az: 70,
   },
   plank: {
     frames: [
@@ -39,11 +50,12 @@ const ANIMS = {
       { pitch: 84, spine: -3, head: -4, shL: 84, shR: 84, elL: 90, elR: 90, ankL: 5, ankR: 5 },
     ], mat: true, anchor: "feet", az: 80, dur: 1.8,
   },
-  heel: { frames: [STAND, { ...STAND, ankL: 38, ankR: 38 }], anchor: "toes", az: 70, dur: 1.4 },
+  heel: { frames: [STAND, { ...STAND, ankL: 38, ankR: 38 }], step: 0.16, towelRoll: true, ground: "toes", anchor: "toes", az: 65, dur: 1.6 },
   lunge: { frames: [{ abL: 8, abR: 8 }, { hipL: 85, kneeL: 90, hipR: -15, kneeR: 78, ankR: -30, spine: 5, abL: 8, abR: 8 }], db: "hands", anchor: "footL", az: 75 },
   rdl: { frames: [{ kneeL: 5, kneeR: 5, abL: 4, abR: 4 }, { pitch: 72, hipL: 82, hipR: 82, kneeL: 20, kneeR: 20, shL: 72, shR: 72, head: -20, abL: 4, abR: 4 }], db: "hands", anchor: "feet", az: 72 },
   press: { frames: [{ abL: 80, abR: 80, elzL: 95, elzR: 95 }, { abL: 168, abR: 168, elzL: 8, elzR: 8 }], db: "hands", anchor: "feet", az: 30 },
   facepull: { frames: [{ shL: 88, shR: 88, abL: 6, abR: 6 }, { shL: 15, shR: 15, abL: 80, abR: 80, elzL: 105, elzR: 105 }], band: [0, 1.55, 1.3], anchor: "feet", az: 40 },
+  curl: { frames: [{ abL: 5, abR: 5 }, { elL: 140, elR: 140, abL: 5, abR: 5 }], db: "hands", anchor: "feet", az: 40 },
   deadbug: {
     frames: [DEADBUG, { ...DEADBUG, shR: 175, hipL: 15, kneeL: 5 }, DEADBUG, { ...DEADBUG, shL: 175, hipR: 15, kneeR: 5 }],
     cycle: true, mat: true, az: 70, dur: 1.1,
@@ -53,15 +65,15 @@ const ANIMS = {
     cycle: true, mat: true, az: 65, dur: 1.2,
   },
   mob: { frames: [{ ...QUAD, spine: -10, shL: 80, shR: 80, head: -25 }, { ...QUAD, spine: 12, shL: 102, shR: 102, head: 35 }], mat: true, az: 75, dur: 1.6 },
-  pilates: {
-    frames: [
-      { ...DEADBUG, spine: 28, head: 20, shL: 22, shR: 22 },
-      { ...DEADBUG, spine: 28, head: 20, shL: 8, shR: 8 },
-    ], mat: true, az: 75, dur: 0.45,
-  },
   breath: { frames: [SUPINE_KNEES, { ...SUPINE_KNEES, spine: -3, head: 3 }], mat: true, az: 78, dur: 2.4 },
   stretch: { frames: [STAND, { pitch: 78, hipL: 82, hipR: 82, kneeL: 4, kneeR: 4, shL: 84, shR: 84, head: -10, abL: 4, abR: 4 }], anchor: "feet", az: 75, dur: 2 },
   fascia: { frames: [STAND, { pitch: 18, hipL: 45, kneeL: 50, hipR: -8, kneeR: 0, shL: 105, shR: 105, abL: 6, abR: 6 }], anchor: "footL", wall: true, az: 80, dur: 1.8 },
+  towel: {
+    frames: [
+      { ...SEAT, spine: 18, head: 10, shL: 62, shR: 62, elL: 25, elR: 25, abL: -6, abR: -6, ankL: 5 },
+      { ...SEAT, spine: 24, head: 12, shL: 55, shR: 55, elL: 50, elR: 50, abL: -6, abR: -6, ankL: -25 },
+    ], mat: true, strap: true, az: 60, dur: 1.8,
+  },
   walk: {
     frames: [
       { hipL: 25, kneeL: 5, hipR: -15, kneeR: 12, shL: -22, shR: 22, elL: 20, elR: 20, abL: 5, abR: 5 },
@@ -71,16 +83,88 @@ const ANIMS = {
     ],
     cycle: true, linear: true, az: 80, dur: 0.42,
   },
-  curl: { frames: [{ abL: 5, abR: 5 }, { elL: 140, elR: 140, abL: 5, abR: 5 }], db: "hands", anchor: "feet", az: 55 },
+  // ---- Pilates ----
+  hundred: {
+    frames: [
+      { ...CURL, hipL: 90, hipR: 90, kneeL: 90, kneeR: 90, shL: 24, shR: 24 },
+      { ...CURL, hipL: 90, hipR: 90, kneeL: 90, kneeR: 90, shL: 8, shR: 8 },
+    ], mat: true, az: 72, dur: 0.4,
+  },
+  rollup: {
+    frames: [
+      { pitch: -90, shL: 175, shR: 175, abL: 8, abR: 8, ankL: -15, ankR: -15 },
+      { pitch: -58, spine: 30, head: 25, hipL: 32, hipR: 32, shL: 100, shR: 100, abL: 8, abR: 8, ankL: -15, ankR: -15 },
+      { pitch: -8, spine: 42, head: 20, hipL: 82, hipR: 82, shL: 78, shR: 78, abL: 6, abR: 6, ankL: -15, ankR: -15 },
+    ], mat: true, az: 78, dur: 1.5,
+  },
+  single: {
+    frames: [
+      { ...CURL, hipL: 120, kneeL: 115, hipR: 45, kneeR: 0, shL: 62, elL: 55, shR: 55, elR: 40 },
+      { ...CURL, hipR: 120, kneeR: 115, hipL: 45, kneeL: 0, shR: 62, elR: 55, shL: 55, elL: 40 },
+    ], mat: true, az: 72, dur: 0.9,
+  },
+  double: {
+    frames: [
+      { ...CURL, hipL: 120, hipR: 120, kneeL: 120, kneeR: 120, shL: 58, shR: 58, elL: 60, elR: 60 },
+      { ...CURL, hipL: 45, hipR: 45, kneeL: 0, kneeR: 0, shL: 172, shR: 172 },
+    ], mat: true, az: 72, dur: 1.3,
+  },
+  crisscross: {
+    frames: [
+      { ...CURL, tw: 30, shL: 160, shR: 160, elL: 125, elR: 125, abL: 40, abR: 40, hipL: 115, kneeL: 105, hipR: 45, kneeR: 0 },
+      { ...CURL, tw: -30, shL: 160, shR: 160, elL: 125, elR: 125, abL: 40, abR: 40, hipR: 115, kneeR: 105, hipL: 45, kneeL: 0 },
+    ], mat: true, az: 60, dur: 1,
+  },
+  swim: {
+    frames: [
+      { pitch: 90, spine: -12, head: -15, shL: 196, shR: 166, abL: 12, abR: 12, hipL: -3, hipR: -18, ankL: 50, ankR: 50 },
+      { pitch: 90, spine: -12, head: -15, shR: 196, shL: 166, abL: 12, abR: 12, hipR: -3, hipL: -18, ankL: 50, ankR: 50 },
+    ], mat: true, az: 65, dur: 0.45,
+  },
+  clam: {
+    frames: [
+      { ...SIDE, hipL: 45, hipR: 45, kneeL: 90, kneeR: 90 },
+      { ...SIDE, hipL: 45, hipR: 45, kneeL: 90, kneeR: 90, habL: 38 },
+    ], mat: true, kneeBand: true, az: 25, el: 16, dur: 1.3,
+  },
+  sidekick: {
+    frames: [
+      { ...SIDE, hipR: 20, habL: 8, hipL: 75 },
+      { ...SIDE, hipR: 20, habL: 8, hipL: -22 },
+    ], mat: true, az: 25, el: 16, dur: 1.1,
+  },
+  legcircle: {
+    frames: [
+      { pitch: -90, abL: 20, abR: 20, hipR: 88, ankR: 20 },
+      { pitch: -90, abL: 20, abR: 20, hipR: 74, habR: 20, ankR: 20 },
+      { pitch: -90, abL: 20, abR: 20, hipR: 60, ankR: 20 },
+      { pitch: -90, abL: 20, abR: 20, hipR: 74, habR: -14, ankR: 20 },
+    ], cycle: true, mat: true, az: 55, dur: 0.6,
+  },
+  spinestretch: {
+    frames: [
+      { ...SEAT, habL: 22, habR: 22, shL: 90, shR: 90, abL: 10, abR: 10 },
+      { ...SEAT, habL: 22, habR: 22, spine: 48, head: 25, shL: 80, shR: 80, abL: 10, abR: 10 },
+    ], mat: true, az: 70, dur: 1.8,
+  },
+  saw: {
+    frames: [
+      { ...SEAT, habL: 25, habR: 25, abL: 88, abR: 88 },
+      { ...SEAT, habL: 25, habR: 25, abL: 88, abR: 88, tw: 40, spine: 35, head: 10 },
+      { ...SEAT, habL: 25, habR: 25, abL: 88, abR: 88 },
+      { ...SEAT, habL: 25, habR: 25, abL: 88, abR: 88, tw: -40, spine: 35, head: 10 },
+    ], cycle: true, mat: true, az: 45, dur: 1.2,
+  },
 };
+ANIMS.pilates = ANIMS.hundred;
 
-// Pie plano por defecto: el ángulo del tobillo compensa cadera, rodilla e inclinación del cuerpo
 function resolve(p) {
   const o = {};
   KEYS.forEach((k) => (o[k] = p[k] ?? 0));
   for (const L of ["L", "R"]) if (p["ank" + L] === undefined) o["ank" + L] = clamp(o["hip" + L] - o["knee" + L] - o.pitch, -35, 60);
   return o;
 }
+function period(A) { const n = A.R.length; return (A.cycle ? n : Math.max(2, 2 * n - 2)) * (A.dur || 1.3); }
 function sample(A, t) {
   const F = A.R, n = F.length, dur = A.dur || 1.3;
   let a, b, u;
@@ -96,218 +180,334 @@ function sample(A, t) {
   return o;
 }
 
-// ---------- Maniquí ----------
-const MUSCLES = {
-  cuadriceps: [["hip", [0, -0.21, 0.05], [0.06, 0.15, 0.04]]],
-  isquios: [["hip", [0, -0.22, -0.05], [0.058, 0.15, 0.04]]],
-  gluteos: [["pelvis", [0.075, -0.05, -0.1], [0.085, 0.085, 0.06], true]],
-  gemelos: [["knee", [0, -0.12, -0.04], [0.045, 0.11, 0.04]]],
-  fascia: [["ank", [0, -0.05, 0.07], [0.036, 0.014, 0.1]]],
-  pecho: [["spine", [0.08, 0.43, 0.1], [0.085, 0.065, 0.04], true]],
-  abdomen: [["spine", [0, 0.2, 0.11], [0.085, 0.13, 0.035]]],
-  espalda: [["spine", [0.09, 0.36, -0.1], [0.075, 0.15, 0.04], true]],
-  lumbar: [["spine", [0.04, 0.12, -0.105], [0.03, 0.09, 0.028], true]],
-  hombros: [["sh", [0, -0.01, 0], [0.075, 0.075, 0.075]]],
-  biceps: [["sh", [0, -0.15, 0.04], [0.034, 0.09, 0.03]]],
-  triceps: [["sh", [0, -0.15, -0.04], [0.034, 0.09, 0.03]]],
-};
-
-function buildFigure() {
-  const skin = new THREE.MeshStandardMaterial({ color: 0xE8CDB5, roughness: 0.55 });
-  const shorts = new THREE.MeshStandardMaterial({ color: 0x3B4A52, roughness: 0.85 });
-  const shirt = new THREE.MeshStandardMaterial({ color: 0x1E7650, roughness: 0.75 });
-  const shoe = new THREE.MeshStandardMaterial({ color: 0xF4F4F2, roughness: 0.6 });
-  const J = {}, body = [];
-  const group = (parent, x, y, z, name) => { const g = new THREE.Group(); g.position.set(x, y, z); parent?.add(g); J[name] = g; return g; };
-  const add = (parent, geo, mat, x, y, z, s) => {
-    const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); if (s) m.scale.set(...s);
-    m.castShadow = true; parent.add(m); body.push(m); return m;
-  };
-  const cap = (r, l) => new THREE.CapsuleGeometry(r, l, 6, 16);
-  const sph = (r) => new THREE.SphereGeometry(r, 24, 16);
-
-  const root = group(null, 0, 0, 0, "root");
-  const pelvis = group(root, 0, 0, 0, "pelvis");
-  add(pelvis, sph(0.16), shorts, 0, -0.02, 0, [1.15, 0.75, 0.85]);
-  const spine = group(pelvis, 0, 0.06, 0, "spine");
-  add(spine, cap(0.15, 0.3), shirt, 0, 0.28, 0, [1.2, 1, 0.75]);
-  const head = group(spine, 0, 0.6, 0, "head");
-  add(head, cap(0.05, 0.06), skin, 0, 0.03, 0);
-  add(head, sph(0.11), skin, 0, 0.17, 0.01, [0.95, 1.08, 1]);
-  add(head, sph(0.02), skin, 0, 0.16, 0.115);
-  for (const s of [1, -1]) {
-    const L = s > 0 ? "L" : "R";
-    const sh = group(spine, 0.22 * s, 0.5, 0, "sh" + L);
-    add(sh, sph(0.066), shirt, 0, 0, 0);
-    add(sh, cap(0.05, 0.2), skin, 0, -0.15, 0);
-    const el = group(sh, 0, -0.3, 0, "el" + L);
-    add(el, cap(0.043, 0.18), skin, 0, -0.13, 0);
-    const hand = group(el, 0, -0.27, 0, "hand" + L);
-    add(hand, sph(0.045), skin, 0, -0.02, 0, [0.8, 1.1, 0.6]);
-    const hip = group(pelvis, 0.1 * s, -0.06, 0, "hip" + L);
-    add(hip, cap(0.072, 0.3), skin, 0, -0.21, 0);
-    add(hip, cap(0.08, 0.08), shorts, 0, -0.08, 0);
-    const knee = group(hip, 0, -0.43, 0, "knee" + L);
-    add(knee, cap(0.052, 0.28), skin, 0, -0.2, 0);
-    const ank = group(knee, 0, -0.42, 0, "ank" + L);
-    add(ank, new THREE.BoxGeometry(0.09, 0.06, 0.25), shoe, 0, -0.03, 0.06);
-    group(ank, 0, -0.06, 0.18, "toe" + L);
-  }
-  return { J, body, root };
+// ---------- Personas realistas ----------
+const MODEL = { carlos: { file: "modelos/carlos.glb", h: 1.76 }, sofia: { file: "modelos/sofia.glb", h: 1.6 } };
+const buffers = {};
+function modelBuffer(who) {
+  if (!buffers[who]) buffers[who] = fetch(new URL(MODEL[who].file, import.meta.url)).then((r) => {
+    if (!r.ok) throw new Error("No se pudo descargar el modelo");
+    return r.arrayBuffer();
+  }).catch((e) => { delete buffers[who]; throw e; });
+  return buffers[who];
 }
 
-// Músculos activos: rojo con brillo pulsante y un halo alrededor
-function addMuscles(fig, list) {
-  const mats = [], halos = [];
+const _v = new THREE.Vector3();
+const W = (o) => o.getWorldPosition(new THREE.Vector3());
+function meshBox(meshes, stride, box = new THREE.Box3()) {
+  box.makeEmpty();
+  for (const m of meshes) {
+    const n = m.geometry.attributes.position.count;
+    for (let i = 0; i < n; i += stride) { m.getVertexPosition(i, _v); _v.applyMatrix4(m.matrixWorld); box.expandByPoint(_v); }
+  }
+  return box;
+}
+// Gira un hueso para que apunte en una dirección (en ejes del cuerpo)
+function aim(root, bone, child, dir) {
+  if (!bone || !child) return;
+  root.updateMatrixWorld(true);
+  const cur = W(child).sub(W(bone)).normalize();
+  const q = new THREE.Quaternion().setFromUnitVectors(cur, dir);
+  const wq = bone.getWorldQuaternion(new THREE.Quaternion());
+  const pq = bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
+  bone.quaternion.copy(pq.multiply(q.multiply(wq)));
+  root.updateMatrixWorld(true);
+}
+
+function rigHuman(gltf, who) {
+  const scene3 = gltf.scene, root = new THREE.Group(), holder = new THREE.Group();
+  root.add(holder); holder.add(scene3);
+  const B = {}, meshes = [];
+  // Ropa de deporte: fuera el sombrero; camiseta, pantalón y zapatillas en colores lisos
+  const sport = { Outfit_Top: 0x2E67D3, Outfit_Bottom: 0x2B3036, Outfit_Footwear: 0xEDEDEA };
+  scene3.traverse((o) => {
+    if (o.isBone) B[o.name.replace(/^mixamorig:?/, "")] = o;
+    if (!o.isMesh) return;
+    const mn = o.material?.name || "";
+    if (/Headwear/.test(mn)) { o.visible = false; return; }
+    const c = Object.entries(sport).find(([k]) => mn.includes(k));
+    if (c) { o.material.map = null; o.material.color.setHex(c[1]); o.material.roughness = 0.85; o.material.metalness = 0; o.material.needsUpdate = true; }
+    o.castShadow = true; o.frustumCulled = false; if (o.isSkinnedMesh) meshes.push(o);
+  });
+  // Tamaño real, mirando al frente (+z) y con la cadera en el origen
+  root.updateMatrixWorld(true);
+  const bb = meshBox(meshes, 2);
+  holder.scale.setScalar(MODEL[who].h / (bb.max.y - bb.min.y));
+  root.updateMatrixWorld(true);
+  const f = W(B.LeftToeBase).sub(W(B.LeftFoot));
+  holder.rotation.y = -Math.atan2(f.x, f.z);
+  root.updateMatrixWorld(true);
+  holder.position.sub(W(B.Hips));
+  root.updateMatrixWorld(true);
+  // Postura de referencia: de pie, brazos y piernas rectos hacia abajo, columna vertical
+  const down = new THREE.Vector3(0, -1, 0), up = new THREE.Vector3(0, 1, 0);
+  for (const s of ["Left", "Right"]) {
+    aim(root, B[s + "Arm"], B[s + "ForeArm"], down); aim(root, B[s + "ForeArm"], B[s + "Hand"], down);
+    aim(root, B[s + "Hand"], B[s + "HandMiddle1"], down);
+    aim(root, B[s + "UpLeg"], B[s + "Leg"], down); aim(root, B[s + "Leg"], B[s + "Foot"], down);
+  }
+  aim(root, B.Spine, B.Spine1, up); aim(root, B.Spine1, B.Spine2, up); aim(root, B.Spine2, B.Neck, up);
+  aim(root, B.Neck, B.Head, up); aim(root, B.Head, B.HeadTop_End, up);
+
+  const ctl = (bone) => {
+    const P = bone.parent.getWorldQuaternion(new THREE.Quaternion());
+    return { bone, q0: bone.quaternion.clone(), P, Pi: P.clone().invert() };
+  };
+  const J = { sp: [ctl(B.Spine), ctl(B.Spine1), ctl(B.Spine2)], neck: ctl(B.Neck), head: ctl(B.Head), fingers: [] };
+  for (const [L, s, sg] of [["L", "Left", 1], ["R", "Right", -1]]) {
+    J["sh" + L] = ctl(B[s + "Arm"]); J["el" + L] = ctl(B[s + "ForeArm"]);
+    J["hip" + L] = ctl(B[s + "UpLeg"]); J["knee" + L] = ctl(B[s + "Leg"]); J["ank" + L] = ctl(B[s + "Foot"]);
+    for (const fn of ["Index", "Middle", "Ring", "Pinky"]) for (const k of [1, 2, 3]) {
+      const b = B[`${s}Hand${fn}${k}`]; if (b) J.fingers.push({ ...ctl(b), sg });
+    }
+  }
+  const rest = meshBox(meshes, 1);
+  const toeR = Math.min(W(B.LeftToeBase).y, W(B.RightToeBase).y) - rest.min.y;
+  return { root, B, J, meshes, toeR, k: MODEL[who].h / 1.76, grip: 18 };
+}
+
+const _e = new THREE.Euler(), _q = new THREE.Quaternion();
+function setRot(j, x, y, z) {
+  _q.setFromEuler(_e.set(x * D, y * D, z * D));
+  j.bone.quaternion.copy(j.Pi).multiply(_q).multiply(j.P).multiply(j.q0);
+}
+function pose(H, p) {
+  H.root.rotation.set(p.pitch * D, p.yaw * D, p.roll * D, "YXZ");
+  H.J.sp.forEach((j) => setRot(j, p.spine / 3, p.tw / 3, 0));
+  setRot(H.J.neck, p.head / 2, 0, 0); setRot(H.J.head, p.head / 2, 0, 0);
+  for (const [L, s] of [["L", 1], ["R", -1]]) {
+    setRot(H.J["sh" + L], -p["sh" + L], 0, s * p["ab" + L]);
+    setRot(H.J["el" + L], -p["el" + L], 0, s * p["elz" + L]);
+    setRot(H.J["hip" + L], -p["hip" + L], 0, s * p["hab" + L]);
+    setRot(H.J["knee" + L], p["knee" + L], 0, 0);
+    setRot(H.J["ank" + L], p["ank" + L], 0, 0);
+  }
+  H.J.fingers.forEach((j) => setRot(j, 0, 0, -j.sg * H.grip));
+}
+function anchorPos(H, a) {
+  const B = H.B;
+  if (a === "feet") return W(B.LeftFoot).add(W(B.RightFoot)).multiplyScalar(0.5);
+  if (a === "toes") return W(B.LeftToeBase).add(W(B.RightToeBase)).multiplyScalar(0.5);
+  return W(B.LeftFoot);
+}
+
+// ---------- Músculos que brillan ----------
+// Punto interior del músculo + dirección hacia la piel: se busca la superficie real del modelo (hombre o mujer)
+function muscleSpots(H, name) {
+  const B = H.B, P = (b, off = [0, 0, 0]) => W(B[b]).add(new THREE.Vector3(...off));
+  const L = (a, b, t) => W(B[a]).lerp(W(B[b]), t);
+  const both = (fn) => [["Left", 1], ["Right", -1]].map(([s, sg]) => fn(s, sg));
+  switch (name) {
+    case "cuadriceps": return both((s) => ({ bone: s + "UpLeg", at: L(s + "UpLeg", s + "Leg", 0.45), dir: [0, 0, 1], size: [0.055, 0.15, 0.035] }));
+    case "isquios": return both((s) => ({ bone: s + "UpLeg", at: L(s + "UpLeg", s + "Leg", 0.45), dir: [0, 0, -1], size: [0.055, 0.14, 0.035] }));
+    case "gluteos": return both((s) => ({ bone: "Hips", at: L("Hips", s + "UpLeg", 0.85).add(new THREE.Vector3(0, -0.04, 0)), dir: [0, 0, -1], size: [0.075, 0.08, 0.05] }));
+    case "gemelos": return both((s) => ({ bone: s + "Leg", at: L(s + "Leg", s + "Foot", 0.28), dir: [0, 0, -1], size: [0.042, 0.09, 0.03] }));
+    case "fascia": return both((s) => ({ bone: s + "Foot", at: L(s + "Foot", s + "ToeBase", 0.55), dir: [0, -1, 0], size: [0.035, 0.012, 0.08] }));
+    case "pecho": return both((s, sg) => ({ bone: "Spine2", at: P("Spine2", [sg * 0.075, 0.02, 0]), dir: [0, 0, 1], size: [0.07, 0.055, 0.03] }));
+    case "abdomen": return [{ bone: "Spine1", at: L("Spine", "Spine1", 0.7), dir: [0, 0, 1], size: [0.075, 0.11, 0.03] }];
+    case "espalda": return both((s, sg) => ({ bone: "Spine2", at: P("Spine2", [sg * 0.08, -0.02, 0]), dir: [0, 0, -1], size: [0.065, 0.13, 0.03] }));
+    case "lumbar": return both((s, sg) => ({ bone: "Spine", at: P("Spine", [sg * 0.045, 0.02, 0]), dir: [0, 0, -1], size: [0.03, 0.07, 0.022] }));
+    case "hombros": return both((s, sg) => ({ bone: s + "Arm", at: P(s + "Arm", [0, -0.02, 0]), dir: [sg, 0, 0], size: [0.05, 0.07, 0.06] }));
+    case "biceps": return both((s) => ({ bone: s + "Arm", at: L(s + "Arm", s + "ForeArm", 0.5), dir: [0, 0, 1], size: [0.03, 0.07, 0.025] }));
+    case "triceps": return both((s) => ({ bone: s + "Arm", at: L(s + "Arm", s + "ForeArm", 0.5), dir: [0, 0, -1], size: [0.03, 0.07, 0.025] }));
+  }
+  return [];
+}
+function addMuscles(H, list) {
+  const ray = new THREE.Raycaster(), mats = [], halos = [];
   const geo = new THREE.SphereGeometry(1, 24, 16);
-  list.forEach((name) => (MUSCLES[name] || []).forEach(([parent, pos, scale, mirror]) => {
-    const parents = ["hip", "knee", "ank", "sh"].includes(parent) ? [[fig.J[parent + "L"], 1], [fig.J[parent + "R"], 1]]
-      : mirror ? [[fig.J[parent], 1], [fig.J[parent], -1]] : [[fig.J[parent], 1]];
-    parents.forEach(([g, sx]) => {
-      const mat = new THREE.MeshStandardMaterial({ color: 0xE53935, emissive: 0xFF2211, emissiveIntensity: 0.8, roughness: 0.4 });
-      const m = new THREE.Mesh(geo, mat); m.position.set(pos[0] * sx, pos[1], pos[2]); m.scale.set(...scale);
-      const hm = new THREE.MeshBasicMaterial({ color: 0xFF3B30, transparent: true, opacity: 0.25, depthWrite: false });
-      const h = new THREE.Mesh(geo, hm); h.scale.setScalar(1.45); m.add(h);
-      g.add(m); mats.push(mat); halos.push(hm);
-    });
+  H.root.updateMatrixWorld(true);
+  list.forEach((name) => muscleSpots(H, name).forEach(({ bone, at, dir, size }) => {
+    const d = new THREE.Vector3(...dir).normalize(), s = size.map((x) => x * H.k);
+    ray.set(at.clone().addScaledVector(d, 0.6), d.clone().negate()); ray.far = 0.6;
+    const hit = ray.intersectObjects(H.meshes, false)[0];
+    const depth = Math.abs(d.x) * s[0] + Math.abs(d.y) * s[1] + Math.abs(d.z) * s[2];
+    const c = hit ? hit.point.clone().addScaledVector(d, -depth * 0.45) : at.clone().addScaledVector(d, 0.06);
+    const mat = new THREE.MeshStandardMaterial({ color: 0xE53935, emissive: 0xFF2211, emissiveIntensity: 0.8, roughness: 0.4, transparent: true, opacity: 0.88 });
+    const m = new THREE.Mesh(geo, mat); m.position.copy(c); m.scale.set(...s); m.renderOrder = 2;
+    const hm = new THREE.MeshBasicMaterial({ color: 0xFF3B30, transparent: true, opacity: 0.22, depthWrite: false, depthTest: false });
+    const h = new THREE.Mesh(geo, hm); h.scale.setScalar(1.5); h.renderOrder = 3; m.add(h);
+    H.root.add(m); H.B[bone].attach(m);
+    mats.push(mat); halos.push(hm);
   }));
   return { mats, halos };
 }
 
-function dumbbell(mat) {
+// ---------- Material ----------
+function dumbbell(mat, k) {
   const g = new THREE.Group();
-  const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.26, 10), mat); bar.rotation.x = Math.PI / 2; g.add(bar);
-  for (const z of [-0.1, 0.1]) {
-    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.05, 18), mat); p.rotation.x = Math.PI / 2; p.position.z = z; g.add(p);
+  const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.26 * k, 12), mat); bar.rotation.x = Math.PI / 2; g.add(bar);
+  for (const z of [-0.1 * k, 0.1 * k]) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.05, 20), mat); p.rotation.x = Math.PI / 2; p.position.z = z; g.add(p);
   }
   g.traverse((o) => (o.castShadow = true));
   return g;
 }
-
-function applyPose(J, p) {
-  J.root.rotation.set(p.pitch * D, 0, 0);
-  J.spine.rotation.set(p.spine * D, 0, 0);
-  J.head.rotation.set(p.head * D, 0, 0);
-  for (const [L, s] of [["L", 1], ["R", -1]]) {
-    J["sh" + L].rotation.set(-p["sh" + L] * D, 0, s * p["ab" + L] * D);
-    J["el" + L].rotation.set(-p["el" + L] * D, 0, s * p["elz" + L] * D);
-    J["hip" + L].rotation.set(-p["hip" + L] * D, 0, s * p["hab" + L] * D);
-    J["knee" + L].rotation.set(p["knee" + L] * D, 0, 0);
-    J["ank" + L].rotation.set(p["ank" + L] * D, 0, 0);
-  }
+// Silla o banco con el asiento a la altura indicada (y opcionalmente respaldo detrás)
+function chair(color, x, seat, z, back) {
+  const g = new THREE.Group(), m = new THREE.MeshStandardMaterial({ color, roughness: 0.8 });
+  const part = (w, h, d, px, py, pz) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(px, py, pz); b.castShadow = true; b.receiveShadow = true; g.add(b); };
+  part(0.44, 0.04, 0.42, 0, seat - 0.02, 0);
+  for (const lx of [-0.19, 0.19]) for (const lz of [-0.18, 0.18]) part(0.035, seat - 0.04, 0.035, lx, (seat - 0.04) / 2, lz);
+  if (back) part(0.44, 0.45, 0.035, 0, seat + 0.22, -0.2);
+  g.position.set(x, 0, z);
+  return g;
 }
-
-// Coloca el cuerpo: fija el punto de apoyo (pies, puntas…) y apoya en el suelo lo que quede más bajo
-const box = new THREE.Box3();
-function anchorPos(J, a) {
-  const v = new THREE.Vector3(), w = new THREE.Vector3();
-  if (a === "feet") return J.ankL.getWorldPosition(v).add(J.ankR.getWorldPosition(w)).multiplyScalar(0.5);
-  if (a === "toes") return J.toeL.getWorldPosition(v).add(J.toeR.getWorldPosition(w)).multiplyScalar(0.5);
-  return J.ankL.getWorldPosition(v);
-}
-function settle(fig, A, floorY) {
-  const r = fig.J.root;
-  r.position.set(0, 0, 0); r.updateMatrixWorld(true);
-  if (A.anchor) {
-    const a = anchorPos(fig.J, A.anchor);
-    if (!A.ref) A.ref = a.clone();
-    r.position.x = A.ref.x - a.x; r.position.z = A.ref.z - a.z; r.updateMatrixWorld(true);
-  }
-  box.makeEmpty(); fig.body.forEach((m) => box.expandByObject(m, true));
-  r.position.y = floorY - box.min.y; r.updateMatrixWorld(true);
-}
-
 const UP = new THREE.Vector3(0, 1, 0);
 function between(m, a, b) {
   const d = b.clone().sub(a), L = d.length();
   m.position.copy(a).addScaledVector(d, 0.5); m.quaternion.setFromUnitVectors(UP, d.normalize()); m.scale.set(1, L, 1);
 }
+function empty(H, bone, pos) { const o = new THREE.Object3D(); o.position.copy(pos); H.root.add(o); H.B[bone].attach(o); return o; }
 
 export function hasAnim(key) { return !!ANIMS[key]; }
 
-export function mountViewer(host, key, muscles) {
+export async function mountViewer(host, key, muscles, who = "carlos") {
   const A = ANIMS[key];
   if (!A.R) A.R = A.frames.map(resolve);
-  const W = host.clientWidth || 320, H = host.clientHeight || 300;
+  const buf = await modelBuffer(who);
+  const gltf = await new GLTFLoader().parseAsync(buf, new URL("./modelos/", import.meta.url).href);
+  const H = rigHuman(gltf, who), B = H.B, k = H.k;
+
+  // Agarres y mancuernas (con los brazos rectos hacia abajo, antes de mover nada)
+  const metal = new THREE.MeshStandardMaterial({ color: 0x33383D, roughness: 0.35, metalness: 0.6 });
+  const grip = {};
+  for (const [L, s, sg] of [["L", "Left", 1], ["R", "Right", -1]]) {
+    const p = W(B[s + "Hand"]).lerp(W(B[s + "HandMiddle1"] || B[s + "Hand"]), 0.85).add(new THREE.Vector3(-sg * 0.015, 0, 0));
+    grip[L] = empty(H, s + "Hand", p);
+  }
+  if (A.db === "hands" || A.db === "right") {
+    H.grip = 70;
+    for (const L of A.db === "hands" ? ["L", "R"] : ["R"]) {
+      const d = dumbbell(metal, k); d.position.copy(W(grip[L])); H.root.add(d); B[L === "L" ? "LeftHand" : "RightHand"].attach(d);
+    }
+  }
+  if (A.db === "chest") {
+    H.grip = 55;
+    const d = dumbbell(metal, k); d.rotation.x = Math.PI / 2; d.position.copy(W(B.Spine2)).add(new THREE.Vector3(0, -0.02, 0.2 * k));
+    H.root.add(d); B.Spine2.attach(d);
+  }
+  if (A.strap) H.grip = 60;
+  const knee = A.kneeBand ? ["Left", "Right"].map((s, i) => empty(H, s + "UpLeg", W(B[s + "Leg"]).add(new THREE.Vector3((i ? -0.07 : 0.07) * k, 0.05 * k, 0)))) : null;
+  const footStrap = A.strap ? empty(H, "LeftFoot", W(B.LeftToeBase).add(new THREE.Vector3(0, -0.02, 0.03))) : null;
+  const glow = addMuscles(H, muscles || []);
+
+  const Wd = host.clientWidth || 320, Hd = host.clientHeight || 320;
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-  renderer.setSize(W, H);
+  renderer.setSize(Wd, Hd);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  host.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 50);
-  scene.add(new THREE.HemisphereLight(0xFFFFFF, 0xC9D6CD, 1.2));
-  const sun = new THREE.DirectionalLight(0xFFFFFF, 1.7);
-  sun.position.set(2, 4.5, 3); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
-  Object.assign(sun.shadow.camera, { left: -2, right: 2, top: 2, bottom: -2, near: 0.5, far: 12 }); sun.shadow.radius = 4;
+  const cam = new THREE.PerspectiveCamera(30, Wd / Hd, 0.05, 50);
+  scene.add(new THREE.HemisphereLight(0xFFFFFF, 0xB9C7BD, 1.5));
+  const sun = new THREE.DirectionalLight(0xFFF6EC, 2.2);
+  sun.position.set(2, 4.5, 3); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -0.0004;
+  Object.assign(sun.shadow.camera, { left: -2, right: 2, top: 2, bottom: -2, near: 0.5, far: 12 });
   scene.add(sun);
-  const floor = new THREE.Mesh(new THREE.CircleGeometry(2.4, 56), new THREE.MeshStandardMaterial({ color: 0xE3EAE1, roughness: 1 }));
+  const fill = new THREE.DirectionalLight(0xDDE8FF, 0.8); fill.position.set(-3, 2, -2); scene.add(fill);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(2.6, 64), new THREE.MeshStandardMaterial({ color: 0xE3EAE1, roughness: 1 }));
   floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  scene.add(H.root);
 
-  const fig = buildFigure(); scene.add(fig.root);
-  const glow = addMuscles(fig, muscles || []);
-  const metal = new THREE.MeshStandardMaterial({ color: 0x3A3F44, roughness: 0.35, metalness: 0.6 });
-  if (A.db === "hands" || A.db === "right") for (const L of A.db === "hands" ? ["L", "R"] : ["R"]) { const d = dumbbell(metal); d.position.y = -0.04; fig.J["hand" + L].add(d); }
-  if (A.db === "chest") { const d = dumbbell(metal); d.rotation.x = Math.PI / 2; d.position.set(0, 0.42, 0.27); fig.J.spine.add(d); }
-  const floorY = A.mat ? 0.015 : 0;
+  const pink = new THREE.MeshStandardMaterial({ color: 0xCF3F73, roughness: 0.6 });
+  const towelMat = new THREE.MeshStandardMaterial({ color: 0x8FB8DE, roughness: 1 });
+  const cyl = (r, mat) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 10), mat); m.castShadow = true; scene.add(m); return m; };
   let band = null;
   if (A.band) {
-    const bm = new THREE.MeshStandardMaterial({ color: 0xCF3F73, roughness: 0.6 });
-    const g = new THREE.CylinderGeometry(0.009, 0.009, 1, 8);
-    band = { a: new THREE.Vector3(...A.band), l: new THREE.Mesh(g, bm), r: new THREE.Mesh(g, bm) };
+    band = { a: new THREE.Vector3(...A.band), l: cyl(0.009, pink), r: cyl(0.009, pink) };
     const post = new THREE.Mesh(new THREE.BoxGeometry(0.08, A.band[1] + 0.2, 0.08), new THREE.MeshStandardMaterial({ color: 0xC9B79C, roughness: 0.9 }));
-    post.position.set(A.band[0], (A.band[1] + 0.2) / 2, A.band[2] + 0.05); post.castShadow = true;
-    scene.add(band.l, band.r, post);
+    post.position.set(A.band[0], (A.band[1] + 0.2) / 2, A.band[2] + 0.05); post.castShadow = true; scene.add(post);
   }
+  const kneeMesh = knee ? cyl(0.016, pink) : null;
+  const strap = footStrap ? [cyl(0.018, towelMat), cyl(0.018, towelMat)] : null;
 
-  // Encuadre: el hueco que ocupa el movimiento completo
-  const all = new THREE.Box3();
-  A.R.forEach((p) => { applyPose(fig.J, p); settle(fig, A, floorY); box.makeEmpty(); fig.body.forEach((m) => box.expandByObject(m, true)); all.union(box); });
+  // Recorrido completo: apoyo en el suelo y punto fijo (pies, puntas…) en cada instante, calculado una vez
+  const floorY = A.mat ? 0.015 : 0, T = period(A), N = A.cycle && A.linear ? 16 : 28;
+  const standY = (A.step || 0) + (A.towelRoll ? 0.03 : 0);
+  let ref = null;
+  const offs = [], all = new THREE.Box3(), bx = new THREE.Box3();
+  for (let i = 0; i < N; i++) {
+    pose(H, sample(A, (i / N) * T));
+    H.root.position.set(0, 0, 0); H.root.updateMatrixWorld(true);
+    const o = new THREE.Vector3();
+    if (A.anchor) { const a = anchorPos(H, A.anchor); if (!ref) ref = a.clone(); o.x = ref.x - a.x; o.z = ref.z - a.z; }
+    meshBox(H.meshes, 3, bx);
+    if (A.ground === "toes") o.y = standY - (Math.min(W(B.LeftToeBase).y, W(B.RightToeBase).y) - H.toeR);
+    else o.y = floorY - bx.min.y;
+    offs.push(o); bx.translate(o); all.union(bx);
+  }
+  const at = (t) => {
+    pose(H, sample(A, t));
+    const x = ((((t % T) + T) % T) / T) * N, i = Math.floor(x) % N, u = x - Math.floor(x);
+    H.root.position.copy(offs[i]).lerp(offs[(i + 1) % N], u);
+    H.root.updateMatrixWorld(true);
+  };
+
+  // Objetos fijos colocados según la postura
+  const wood = 0xB08D66;
+  at(0);
   if (A.mat) {
-    const c = all.getCenter(new THREE.Vector3());
-    const mat = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.015, 1.85), new THREE.MeshStandardMaterial({ color: 0x5E8F77, roughness: 0.9 }));
+    const c = all.getCenter(new THREE.Vector3()), sz = all.getSize(new THREE.Vector3());
+    const mat = new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.62, sz.x + 0.1), 0.015, Math.max(1.85, sz.z + 0.15)), new THREE.MeshStandardMaterial({ color: 0x5E8F77, roughness: 0.9 }));
     mat.position.set(c.x, 0.0075, c.z); mat.receiveShadow = true; scene.add(mat);
   }
+  if (A.step) {
+    const toe = W(B.LeftToeBase).add(W(B.RightToeBase)).multiplyScalar(0.5);
+    const st = new THREE.Mesh(new THREE.BoxGeometry(0.75, A.step, 0.34), new THREE.MeshStandardMaterial({ color: wood, roughness: 0.8 }));
+    st.position.set(toe.x, A.step / 2, toe.z + 0.11); st.castShadow = true; st.receiveShadow = true; scene.add(st);
+    if (A.towelRoll) {
+      const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.5, 16), towelMat);
+      roll.rotation.z = Math.PI / 2; roll.position.set(toe.x, A.step + 0.02, toe.z + 0.03); roll.castShadow = true; scene.add(roll);
+    }
+  }
+  if (A.bench) { const g = W(grip.L); scene.add(chair(wood, g.x, Math.max(0.3, g.y - 0.035), g.z, false)); }
+  if (A.chair) {
+    at(A.dur || 1.3);
+    const hip = W(B.Hips);
+    scene.add(chair(wood, hip.x, Math.max(0.3, hip.y - 0.13 * k), hip.z - 0.06, true));
+    at(0);
+  }
   if (A.wall) {
-    // Pared donde apoya las manos en la postura final
-    applyPose(fig.J, A.R.at(-1)); settle(fig, A, floorY);
-    const z = Math.max(fig.J.handL.getWorldPosition(new THREE.Vector3()).z, fig.J.handR.getWorldPosition(new THREE.Vector3()).z) + 0.05;
+    at(T / 2);
+    const z = Math.max(W(grip.L).z, W(grip.R).z) + 0.05;
     const wall = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.1, 0.06), new THREE.MeshStandardMaterial({ color: 0xF1EDE6, roughness: 0.95 }));
     wall.position.set(0, 1.05, z + 0.03); wall.receiveShadow = true; scene.add(wall);
-    all.expandByPoint(new THREE.Vector3(0, 0, z));
+    all.expandByPoint(new THREE.Vector3(0, 0, z)); at(0);
   }
+
+  // Cámara: encuadra el recorrido completo a lo alto y a lo ancho
   const target = all.getCenter(new THREE.Vector3()), size = all.getSize(new THREE.Vector3());
-  // Distancia para que quepa a lo alto y a lo ancho del recuadro, con margen
-  const tv = Math.tan(15 * D), asp = W / H;
+  const tv = Math.tan(15 * D), asp = Wd / Hd;
   const dist = Math.max(size.y / 2 / tv * 1.15, Math.max(size.x, size.z) / 2 / (tv * asp) * 1.2) + Math.min(size.x, size.z) / 2 + 0.2;
-  let az = (A.az ?? 50) * D, el = 12 * D;
+  let az = (A.az ?? 50) * D, el = (A.el ?? 12) * D;
   const place = () => {
     cam.position.set(target.x + dist * Math.sin(az) * Math.cos(el), target.y + dist * Math.sin(el), target.z + dist * Math.cos(az) * Math.cos(el));
     cam.lookAt(target);
   };
   place();
+  host.appendChild(renderer.domElement);
 
-  // Girar arrastrando
   const cv = renderer.domElement; let drag = null;
   cv.style.touchAction = "none"; cv.style.cursor = "grab";
   cv.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, az, el }; cv.setPointerCapture(e.pointerId); });
   cv.addEventListener("pointermove", (e) => {
     if (!drag) return;
-    az = drag.az - (e.clientX - drag.x) * 0.012; el = clamp(drag.el + (e.clientY - drag.y) * 0.006, -0.05, 1.2); place();
+    az = drag.az - (e.clientX - drag.x) * 0.012; el = clamp(drag.el + (e.clientY - drag.y) * 0.006, -0.05, 1.3); place();
   });
-  const up = () => (drag = null); cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+  const upEv = () => (drag = null); cv.addEventListener("pointerup", upEv); cv.addEventListener("pointercancel", upEv);
 
   let playing = false, t = 0, last = performance.now(), raf = 0;
-  const hl = new THREE.Vector3(), hr = new THREE.Vector3();
   function draw(now) {
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     if (playing) t += dt;
-    applyPose(fig.J, sample(A, t)); settle(fig, A, floorY);
-    if (band) { fig.J.handL.getWorldPosition(hl); fig.J.handR.getWorldPosition(hr); between(band.l, hl, band.a); between(band.r, hr, band.a); }
-    const k = 0.5 + 0.5 * Math.sin(now / 260);
-    glow.mats.forEach((m) => (m.emissiveIntensity = 0.45 + 0.75 * k));
-    glow.halos.forEach((m) => (m.opacity = 0.12 + 0.22 * k));
+    at(t);
+    if (band) { between(band.l, W(grip.L), band.a); between(band.r, W(grip.R), band.a); }
+    if (kneeMesh) between(kneeMesh, W(knee[0]), W(knee[1]));
+    if (strap) { const f = W(footStrap); between(strap[0], W(grip.L), f); between(strap[1], W(grip.R), f); }
+    const pulse = 0.5 + 0.5 * Math.sin(now / 260);
+    glow.mats.forEach((m) => (m.emissiveIntensity = 0.45 + 0.75 * pulse));
+    glow.halos.forEach((m) => (m.opacity = 0.1 + 0.2 * pulse));
     renderer.render(scene, cam);
     raf = requestAnimationFrame(draw);
   }
@@ -319,7 +519,10 @@ export function mountViewer(host, key, muscles) {
     seek(s) { t = s; },
     dispose() {
       cancelAnimationFrame(raf);
-      scene.traverse((o) => { o.geometry?.dispose(); o.material?.dispose?.(); });
+      scene.traverse((o) => {
+        o.geometry?.dispose();
+        [].concat(o.material || []).forEach((m) => { Object.values(m).forEach((v) => v?.isTexture && v.dispose()); m.dispose(); });
+      });
       renderer.dispose(); cv.remove();
     },
   };

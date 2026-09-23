@@ -33,7 +33,8 @@ Juego de mancuernas de 20 kg, bandas, esterilla, zapatillas. Nada de gimnasio. 4
 - `build.py`: genera `index.html` (versión instalable conectada a Supabase). Ejecutar tras cada cambio en `app.html`.
 - `supabase/functions/ia/index.ts`: función de IA desplegada en Supabase (la despliega Claude con el conector de Supabase).
 - `vendor/supabase.js`: librería de Supabase (v2.117.1) incluida en local para que funcione sin CDN.
-- `ejercicio3d.js` + `vendor/three.module.min.js` (Three.js r170): visor 3D de ejercicios. Maniquí articulado con posturas por ejercicio (ANIMS), músculo trabajado en rojo con brillo pulsante, play/pausa y girar arrastrando. Se carga con import dinámico solo al abrir un ejercicio. En app.html: ANIM_OF (clave EX → animación), ANIM_RX (nombres de ejercicios de la IA → animación), ANIM_MUS (músculos) y FOOD_EMO (emoji de cada plato según su nombre).
+- `ejercicio3d.js` + `vendor/three.module.min.js`, `vendor/GLTFLoader.js`, `vendor/BufferGeometryUtils.js` (Three.js r170, imports cambiados a rutas relativas): visor 3D de ejercicios con personas realistas. `modelos/carlos.glb` (hombre, avatar Ready Player Me del repo de three.js; en código se quita el sombrero y se pone ropa deportiva) y `modelos/sofia.glb` (mujer, Michelle de Mixamo del repo de three.js; pantalón recoloreado a mallas oscuras en la textura). Sus huesos (esqueleto humanoide estándar) se mueven con las posturas de ANIMS (ángulos en ejes del cuerpo, relativos a una postura de referencia con brazos abajo). Músculo trabajado en rojo pulsante (se coloca con raycast sobre la superficie real), material en escena (mancuernas, banda, cajón, toalla enrollada, silla, esterilla, pared, toalla-cincha), play/pausa y girar arrastrando.
+- En app.html: EX (ejercicios), EX_DETAIL (paso a paso, errores típicos, respiración), ANIM_OF (clave → animación o lista de variantes, p. ej. fascia → toalla/pared), ANIM_RX (nombres de la IA → animación), ANIM_MUS, ANIM_EQUIP, FOOD_EMO.
 - `publicar.py`: ejecuta build.py, copia todo a un clon del repo en `%LOCALAPPDATA%\CarSofit-publicar\repo` (subcarpeta CarSofit/) y hace commit + push. Esta carpeta de OneDrive es la fuente de verdad: lo que haya en GitHub se sobrescribe.
 
 ## Publicar tras cada cambio (obligatorio)
@@ -50,6 +51,7 @@ Juego de mancuernas de 20 kg, bandas, esterilla, zapatillas. Nada de gimnasio. 4
   `eaten` = comidas fuera de plan por persona: clave "persona|AAAA-MM-DD|franja" → {name, kcal, p, c, g, f, nota, desc, plan}.
 - `mediciones` (persona, fecha, peso, grasa) · única por persona y día.
 - `sintomas` (persona, fecha, franja, plato_id, plato_nombre, malestar 0-10, sintomas[], nota) · diario digestivo por comida.
+- `cargas` (persona, fecha, ejercicio, peso kg, reps) · única por persona, día y ejercicio. Pesos de mancuernas: la ficha del ejercicio compara con la sesión anterior y con el primer registro; Progreso muestra la evolución; la IA de entreno propone la carga siguiente.
 
 ## Hoja de ruta
 1. [x] Prototipo navegable con datos de ejemplo (este archivo).
@@ -62,4 +64,5 @@ Juego de mancuernas de 20 kg, bandas, esterilla, zapatillas. Nada de gimnasio. 4
 5. [x] IA por partes (acción `cambios`): ya no se rehace la semana entera desde la app. Se escribe qué cambiar («la cena del martes», «rehaz el jueves») o se pulsa «Rehacer el <día> entero»; la IA primero decide qué platos tocar (máx. 8) y luego los genera por día en paralelo. Botón «Deshacer» en el aviso.
 6. [x] Comido fuera de plan (acción `comido`): desde el detalle de un plato de hoy o de días pasados, «¿Has comido otra cosa?». La IA estima kcal y macros y da una valoración; sustituye el plato solo para esa persona y reajusta las raciones del resto de su día (factor limitado a 0,5-1,8). La lista de la compra usa las raciones del plan.
 7. [x] Emojis discretos en platos (en lugar de las letras D/C/N/T) y ejercicios; botón «Ver cómo se hace» con el muñeco 3D.
-8. [x] Publicada en GitHub Pages: https://carlitoseh.github.io/CarSoFit/CarSofit/ (repo carlitoseh/CarSoFit, archivos dentro de la subcarpeta CarSofit/).
+8. [x] Personas 3D realistas (hombre/mujer según quien use la app), sesión de pilates de Sofía detallada (10 ejercicios con animación), paso a paso de cada ejercicio y registro de pesos con comparativa.
+9. [x] Publicada en GitHub Pages: https://carlitoseh.github.io/CarSoFit/CarSofit/ (repo carlitoseh/CarSoFit, archivos dentro de la subcarpeta CarSofit/).

@@ -287,11 +287,19 @@ Devuelve un único plato para la misma franja.`;
 
     if (body.accion === "entreno") {
       const quien = body.persona === "sofia" ? "Sofía" : "Carlos";
+      // Pesos registrados: último y anterior de cada ejercicio, para proponer la progresión
+      const { data: cargas } = await sb.from("cargas").select("fecha,ejercicio,peso,reps")
+        .eq("persona", body.persona).order("fecha", { ascending: false }).limit(60);
+      const porEj: Record<string, { fecha: string; peso: number; reps: number | null }[]> = {};
+      (cargas ?? []).forEach((c: any) => { const l = (porEj[c.ejercicio] ??= []); if (l.length < 2) l.push(c); });
+      const pesos = Object.entries(porEj).map(([ej, l]) =>
+        `${ej}: ${l[0].peso} kg${l[0].reps ? ` × ${l[0].reps}` : ""} (${l[0].fecha})${l[1] ? `, antes ${l[1].peso} kg (${l[1].fecha})` : ""}`);
       const prompt = `${ctx}
 Rehaz la sesión de entrenamiento de ${quien} del ${body.dia}.
 Sesión actual: ${JSON.stringify(body.actual)}.
+Pesos registrados por ${quien}: ${pesos.length ? pesos.join("; ") : "ninguno todavía"}.
 Petición: ${body.peticion || "una variante distinta con el mismo objetivo"}.
-Da entre 3 y 8 ejercicios con dosis (series × repeticiones, tiempo o km) y una frase de técnica. Termina con estiramiento de fascia plantar si es Carlos.`;
+Da entre 3 y 8 ejercicios con dosis (series × repeticiones, tiempo o km) y una frase de técnica. Si un ejercicio lleva mancuernas y hay peso registrado, pon en "dose" el peso recomendado (p. ej. "3 × 12 · 10 kg"): sube 1-2 kg si la última vez completó las repeticiones, mantén si no. Nombra los ejercicios igual que en los registros para poder comparar. Termina con estiramiento de fascia plantar si es Carlos.`;
       const { model, out } = await gemini(prompt, SESSION_SCHEMA, 4096, 45000, deadline);
       return json({ model, session: out });
     }
