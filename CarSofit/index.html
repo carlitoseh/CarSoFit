@@ -220,6 +220,13 @@ h3{font-size:16px;font-weight:700}
 .btn svg{width:16px;height:16px;vertical-align:-3px;margin-right:6px}
 .toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:14px;font-size:14px;z-index:60;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
 .toast-act{border:0;background:transparent;color:#9FE0BF;font-weight:700;margin-left:10px;padding:0}
+.thumb.emo{font-size:30px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.exi .ico{margin-right:4px}
+.play-mini{border:0;background:var(--me-soft);color:var(--me);font-weight:700;font-size:12px;border-radius:999px;padding:4px 10px;margin-top:6px;display:inline-flex;align-items:center;gap:4px}
+.viewer{height:320px;border-radius:18px;background:linear-gradient(#FFFFFF,#EEF3EC);overflow:hidden;display:grid;place-items:center;box-shadow:var(--shadow)}
+.viewer canvas{display:block}
+.chip.mus{background:var(--bad-soft);border-color:transparent;color:var(--bad)}
+.chip.mus i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#E53935;box-shadow:0 0 6px 2px rgba(229,57,53,.55);margin-right:6px;vertical-align:1px}
 .demo{font-size:12px;color:var(--muted);text-align:center;margin-top:18px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:380px){ .form-row{grid-template-columns:1fr 1fr} .form-row .btn{grid-column:1/-1} .who button{padding:6px 9px} }
@@ -456,6 +463,32 @@ const SESSIONS = {
   ]
 };
 
+// ---------- Emojis y animaciones 3D ----------
+const FOOD_EMO=[[/pizza/i,"🍕"],[/hamburgues/i,"🍔"],[/bocadillo|s[aá]ndwich|wrap|montadito/i,"🥪"],[/tortita|crep/i,"🥞"],[/bizcocho|magdalena|muffin|galleta/i,"🧁"],
+  [/gachas|avena|porridge|muesli/i,"🥣"],[/^(crema|sopa|caldo)/i,"🍲"],[/paella|arroz meloso|arroz caldoso/i,"🥘"],[/berenjena/i,"🍆"],
+  [/gamba|langostino|marisco|sepia|calamar|mejill[oó]n|pulpo/i,"🦐"],[/salm[oó]n|caballa|merluza|at[uú]n|sardina|bacalao|pescado|dorada|lubina|trucha|boquer/i,"🐟"],
+  [/pollo|pavo/i,"🍗"],[/ternera|cerdo|lomo|carne|solomillo|filete/i,"🥩"],[/lenteja|garbanzo|alubia|legumbre|hummus/i,"🍲"],
+  [/huevo|tortilla|revuelto/i,"🍳"],[/pasta|espagueti|macarr|fideo|lasa[nñ]a/i,"🍝"],[/arroz|quinoa|risotto|cusc[uú]s/i,"🍚"],[/ensalada/i,"🥗"],
+  [/\bbol\b/i,"🥣"],[/yogur|k[eé]fir|queso fresco/i,"🥛"],[/tostada|\bpan\b/i,"🍞"],[/kiwi/i,"🥝"],[/pl[aá]tano/i,"🍌"],[/fresa/i,"🍓"],[/ar[aá]ndano/i,"🫐"],
+  [/naranja|mandarina/i,"🍊"],[/zanahoria/i,"🥕"],[/nuez|nueces|almendra|cacahuete|frutos secos/i,"🥜"]];
+function foodEmoji(name,slot){ const hit=FOOD_EMO.find(([rx])=>rx.test(name)); return hit?hit[1]:({des:"☕",sna:"🍎"}[slot]||"🍽️"); }
+// Ejercicio → animación del muñeco 3D (ejercicio3d.js) y músculos que se iluminan
+const ANIM_OF={goblet:"squat",squatbw:"squatbw",floorpress:"floorpress",row:"row",rowband:"rowband",bridge:"bridge",glute2:"bridge",plank:"plank",heel:"heel",lunge:"lunge",rdl:"rdl",press:"press",facepull:"facepull",deadbug:"deadbug",birddog:"birddog",fascia:"fascia",walk:"walk",walkint:"walk",walklong:"walk",walk40:"walk",mob:"mob",pilates:"pilates",breath:"breath",stretch:"stretch"};
+const ANIM_RX=[[/sentadilla|squat/i,"squat"],[/zancada|lunge|split/i,"lunge"],[/puente|hip thrust/i,"bridge"],[/plancha|plank/i,"plank"],[/face ?pull|aperturas|p[aá]jaros? invertid/i,"facepull"],[/remo/i,"row"],
+  [/press (militar|de hombro)|press hombro|arnold/i,"press"],[/press|flexi[oó]n|push/i,"floorpress"],[/peso muerto|buenos d[ií]as/i,"rdl"],[/tal[oó]n|talones|gemelo|pantorrilla/i,"heel"],
+  [/bicho muerto|dead ?bug/i,"deadbug"],[/p[aá]jaro|bird/i,"birddog"],[/curl|b[ií]ceps/i,"curl"],[/fascia/i,"fascia"],[/estir/i,"stretch"],[/respira/i,"breath"],
+  [/pilates|hundred|abdominal|crunch/i,"pilates"],[/movilidad|gato|camello/i,"mob"],[/camin|andar|marcha|ruta|paseo|trot|correr|carrera/i,"walk"],[/gl[uú]teo/i,"bridge"]];
+const ANIM_MUS={squat:["cuadriceps","gluteos"],squatbw:["cuadriceps","gluteos"],floorpress:["pecho","triceps","hombros"],row:["espalda","biceps"],rowband:["espalda","biceps"],bridge:["gluteos","isquios"],
+  plank:["abdomen","hombros"],heel:["gemelos","fascia"],lunge:["cuadriceps","gluteos"],rdl:["isquios","gluteos","lumbar"],press:["hombros","triceps"],facepull:["hombros","espalda"],deadbug:["abdomen"],
+  birddog:["lumbar","gluteos","abdomen"],fascia:["gemelos","fascia"],walk:["cuadriceps","gemelos","gluteos"],mob:["lumbar","abdomen"],pilates:["abdomen"],breath:["abdomen"],stretch:["isquios","lumbar"],curl:["biceps"]};
+const MUS_NAME={cuadriceps:"Cuádriceps",gluteos:"Glúteos",pecho:"Pecho",triceps:"Tríceps",hombros:"Hombros",espalda:"Espalda",biceps:"Bíceps",isquios:"Isquiotibiales",abdomen:"Abdomen",gemelos:"Gemelos",fascia:"Fascia plantar",lumbar:"Zona lumbar"};
+function exInfo(e){ return typeof e==="string"?EX[e]:[e.name,e.dose,e.how]; }
+function animOf(e){ if(typeof e==="string"&&ANIM_OF[e]) return ANIM_OF[e]; const n=exInfo(e)[0]; const hit=ANIM_RX.find(([rx])=>rx.test(n)); return hit?hit[1]:null; }
+function exEmoji(name,anim){
+  if(/correr|trot|carrera/i.test(name)) return "🏃";
+  return {walk:"🚶",breath:"🌬️",stretch:"🤸",fascia:"🤸",mob:"🧘",pilates:"🧘",deadbug:"🧘",birddog:"🧘",plank:"🧘"}[anim]||"🏋️";
+}
+
 function dish(id){ return DISHES[id] || (S.dishes&&S.dishes[id]) || {slot:"com",name:"Plato no disponible",kcal:0,p:0,c:0,g:0,f:0,time:"",tool:"",ing:[],steps:[],why:"",micro:"",sofia:""}; }
 
 // ---------- Estado ----------
@@ -603,12 +636,12 @@ function kLabel(k){ return {fuerza:"Fuerza",cardio:"Cardio",movil:"Movil.",rest:
 function mealRow(id,i,slot){
   const x=dish(id), p=S.person, f=factor(p,i), e=eatenFor(p,i,slot);
   if(e) return `<button class="meal" data-eaten="${i}" data-slot="${slot}">
-    <div class="thumb t-${slot}">${SLOT_LETTER[slot]}</div>
+    <div class="thumb emo t-${slot}" aria-hidden="true">${foodEmoji(e.name,slot)}</div>
     <div><div class="slot">${SLOTS[slot]}</div><div class="title">${esc(e.name)}</div>
     <div class="tags"><span class="tag warn">Fuera de plan</span>${(()=>{const sy=symFor(p,dayDate(i),slot);return sy?`<span class="tag ${lvl(sy.score)}">Sentó ${sy.score}/10</span>`:""})()}</div></div>
     <div class="kcal num">${fmt(r0(e.kcal))}<small>kcal</small></div></button>`;
   return `<button class="meal" data-dish="${id}" data-day="${i}" data-slot="${slot}">
-    <div class="thumb t-${slot}">${SLOT_LETTER[slot]}</div>
+    <div class="thumb emo t-${slot}" aria-hidden="true">${foodEmoji(x.name,slot)}</div>
     <div><div class="slot">${SLOTS[slot]}</div><div class="title">${esc(x.name)}</div>
     <div class="tags"><span class="tag">${esc(x.tool)}</span><span class="tag">${esc(x.time)}</span>${(()=>{const sy=symFor(p,dayDate(i),slot);return sy?`<span class="tag ${lvl(sy.score)}">Sentó ${sy.score}/10</span>`:""})()}</div></div>
     <div class="kcal num">${fmt(r0(x.kcal*f))}<small>kcal</small></div></button>`;
@@ -727,8 +760,8 @@ function vEntreno(){
   <section class="section wk">
     ${DAY_NAMES.map((dn,i)=>{const s=sessionForDay(p,i); const open=i===S.openDay;
       if(!s) return `<div class="session"><button disabled style="cursor:default"><div class="dchip k-rest">${DAY_SHORT[i]}</div><div><h3>Descanso</h3><div class="meta">Paseo libre y estiramientos</div></div><span></span></button></div>`;
-      const kids=s.ex.map((e,j)=>{const key=`${p}-${i}-${j}`; const x= typeof e==="string" ? EX[e] : [e.name,e.dose,e.how];
-        return `<div class="exi"><input type="checkbox" id="ex-${key}" data-ex="${key}" ${S.done[key]?"checked":""} aria-label="Hecho: ${esc(x[0])}"><div><b>${esc(x[0])}</b><p>${esc(x[2])}</p></div><span class="dose">${x[1]}</span></div>`}).join("");
+      const kids=s.ex.map((e,j)=>{const key=`${p}-${i}-${j}`; const x=exInfo(e), a=animOf(e);
+        return `<div class="exi"><input type="checkbox" id="ex-${key}" data-ex="${key}" ${S.done[key]?"checked":""} aria-label="Hecho: ${esc(x[0])}"><div><b><span class="ico" aria-hidden="true">${exEmoji(x[0],a)}</span>${esc(x[0])}</b><p>${esc(x[2])}</p>${a?`<button class="play-mini" data-exview="${i}-${j}">▶ Ver cómo se hace</button>`:""}</div><span class="dose">${x[1]}</span></div>`}).join("");
       const nd=s.ex.filter((e,j)=>S.done[`${p}-${i}-${j}`]).length;
       return `<div class="session ${i===TODAY_IDX?"today":""}"><button data-open="${i}" aria-expanded="${open}">
         <div class="dchip k-${s.k}">${DAY_SHORT[i]}<br>${kLabel(s.k)}</div>
@@ -849,7 +882,30 @@ function openDish(id,i,slot){
       <div class="row"><button class="btn me" data-swap="${id}" data-day="${i}" data-slot="${slot}">Cambiar este plato${CLOUD_ENABLED?" con IA":""}</button></div></div>
     </div></div></div>`;
 }
-function closeSheet(){ $("#sheet-root").innerHTML=""; }
+let VIEWER=null;
+function closeSheet(){ VIEWER?.dispose(); VIEWER=null; $("#sheet-root").innerHTML=""; }
+async function openExercise(i,j){
+  const p=S.person, s=sessionForDay(p,i), e=s?.ex[j]; if(!e) return;
+  const x=exInfo(e), a=animOf(e), mus=ANIM_MUS[a]||[];
+  $("#sheet-root").innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(x[0])}">
+    <div class="grab"></div>
+    <div class="sheet-head"><div><div class="eyebrow">${DAY_NAMES[i]} · ${esc(s.name)}</div><h2 style="margin-top:4px">${exEmoji(x[0],a)} ${esc(x[0])}</h2>
+      <div class="tags"><span class="tag">${esc(x[1])}</span></div></div>
+      <button class="icon-btn" data-close aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="stack" style="margin-top:14px">
+      <div class="viewer" id="viewer"><div class="row muted"><span class="spin" aria-hidden="true"></span>Cargando el muñeco 3D…</div></div>
+      <div class="row" style="justify-content:space-between"><button class="btn me" id="v-play" disabled>▶ Ver el movimiento</button><span class="muted" style="font-size:12px">Arrastra para girarlo</span></div>
+      ${mus.length?`<div class="note"><h3>Músculos que trabajas</h3><div class="chips" style="margin-top:8px">${mus.map(m=>`<span class="chip mus"><i></i>${MUS_NAME[m]}</span>`).join("")}</div></div>`:""}
+      <div class="note"><h3>Cómo se hace</h3><p>${esc(x[2])}</p></div>
+      ${p==="carlos"&&/walk|heel|lunge|squat/.test(a)?`<p class="muted" style="margin:0;font-size:13px">Fascitis plantar: sin saltos ni impactos; si molesta el pie más de 3/10, baja la intensidad.</p>`:""}
+    </div></div></div>`;
+  try{
+    const mod=await import("./ejercicio3d.js");
+    const host=$("#viewer"); if(!host) return;
+    host.innerHTML=""; VIEWER=mod.mountViewer(host,a,mus);
+    $("#v-play").disabled=false;
+  }catch(err){ const host=$("#viewer"); if(host) host.innerHTML=`<p class="muted" style="padding:16px;text-align:center">No se pudo cargar la animación. Comprueba la conexión y vuelve a abrirla.</p>`; }
+}
 // Detalle de una comida registrada fuera de plan
 function openEaten(i,slot){
   const p=S.person, pr=S.profiles[p], e=eatenFor(p,i,slot); if(!e) return;
@@ -1132,6 +1188,8 @@ document.addEventListener("click",e=>{
   const me=t.closest(".meal[data-eaten]"); if(me){ openEaten(+me.dataset.eaten,me.dataset.slot); return; }
   const m=t.closest(".meal[data-dish]"); if(m){ openDish(m.dataset.dish,+m.dataset.day,m.dataset.slot); return; }
   const dp=t.closest("[data-day-pick]"); if(dp){ S.day=+dp.dataset.dayPick; render(); return; }
+  const xv=t.closest("[data-exview]"); if(xv){ const [i,j]=xv.dataset.exview.split("-").map(Number); openExercise(i,j); return; }
+  if(t.closest("#v-play")&&VIEWER){ const on=VIEWER.toggle(); $("#v-play").textContent=on?"❚❚ Pausa":"▶ Ver el movimiento"; return; }
   const op=t.closest("[data-open]"); if(op){ const i=+op.dataset.open; S.openDay = S.openDay===i?null:i; render(); return; }
   const exr=t.closest("[data-ex-reset]"); if(exr){ const i=+exr.dataset.exReset; delete S.sessions[`${S.person}-${i}`];
     Object.keys(S.done).filter(k=>k.startsWith(`${S.person}-${i}-`)).forEach(k=>delete S.done[k]); pushKey("sessions"); pushKey("done"); render(); return; }

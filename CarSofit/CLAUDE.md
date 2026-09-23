@@ -33,6 +33,7 @@ Juego de mancuernas de 20 kg, bandas, esterilla, zapatillas. Nada de gimnasio. 4
 - `build.py`: genera `index.html` (versión instalable conectada a Supabase). Ejecutar tras cada cambio en `app.html`.
 - `supabase/functions/ia/index.ts`: función de IA desplegada en Supabase (la despliega Claude con el conector de Supabase).
 - `vendor/supabase.js`: librería de Supabase (v2.117.1) incluida en local para que funcione sin CDN.
+- `ejercicio3d.js` + `vendor/three.module.min.js` (Three.js r170): visor 3D de ejercicios. Maniquí articulado con posturas por ejercicio (ANIMS), músculo trabajado en rojo con brillo pulsante, play/pausa y girar arrastrando. Se carga con import dinámico solo al abrir un ejercicio. En app.html: ANIM_OF (clave EX → animación), ANIM_RX (nombres de ejercicios de la IA → animación), ANIM_MUS (músculos) y FOOD_EMO (emoji de cada plato según su nombre).
 - `publicar.py`: ejecuta build.py, copia todo a un clon del repo en `%LOCALAPPDATA%\CarSofit-publicar\repo` (subcarpeta CarSofit/) y hace commit + push. Esta carpeta de OneDrive es la fuente de verdad: lo que haya en GitHub se sobrescribe.
 
 ## Publicar tras cada cambio (obligatorio)
@@ -60,4 +61,5 @@ Juego de mancuernas de 20 kg, bandas, esterilla, zapatillas. Nada de gimnasio. 4
 4. [x] Menú: botón «Compartir semana» que genera un folio A4 horizontal (canvas 2339×1654, días en columnas y desayuno/comida/cena en filas) como imagen PNG para WhatsApp y como PDF para imprimir (PDF hecho a mano con la imagen JPEG, sin librerías); también como texto (wa.me).
 5. [x] IA por partes (acción `cambios`): ya no se rehace la semana entera desde la app. Se escribe qué cambiar («la cena del martes», «rehaz el jueves») o se pulsa «Rehacer el <día> entero»; la IA primero decide qué platos tocar (máx. 8) y luego los genera por día en paralelo. Botón «Deshacer» en el aviso.
 6. [x] Comido fuera de plan (acción `comido`): desde el detalle de un plato de hoy o de días pasados, «¿Has comido otra cosa?». La IA estima kcal y macros y da una valoración; sustituye el plato solo para esa persona y reajusta las raciones del resto de su día (factor limitado a 0,5-1,8). La lista de la compra usa las raciones del plan.
-7. [x] Publicada en GitHub Pages: https://carlitoseh.github.io/CarSoFit/CarSofit/ (repo carlitoseh/CarSoFit, archivos dentro de la subcarpeta CarSofit/).
+7. [x] Emojis discretos en platos (en lugar de las letras D/C/N/T) y ejercicios; botón «Ver cómo se hace» con el muñeco 3D.
+8. [x] Publicada en GitHub Pages: https://carlitoseh.github.io/CarSoFit/CarSofit/ (repo carlitoseh/CarSoFit, archivos dentro de la subcarpeta CarSofit/).
