@@ -1,0 +1,960 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F2F5F0">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="CarSofit">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>body{margin:0}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px)}</style>
+<title>CarSofit</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+:root,:root[data-theme="dark"]{
+  --bg:#F2F5F0; --surface:#FFFFFF; --surface-2:#E7EDE5; --ink:#15261E; --muted:#5A6B62; --line:#D3DDD4;
+  --brand:#1E7650; --brand-soft:#D7EBDF; --on-brand:#FFFFFF;
+  --carlos:#2E67D3; --carlos-soft:#DCE6F8; --sofia:#CF3F73; --sofia-soft:#F8DDE7;
+  --sun:#E9A628; --sun-soft:#FBEBC8; --warn:#B46A0E; --shadow:0 1px 2px rgba(21,38,30,.06),0 8px 24px rgba(21,38,30,.07);
+  --me:var(--carlos); --me-soft:var(--carlos-soft);
+  --bad:#C23B3B; --bad-soft:#F7DCDC; color-scheme:light;
+  --display:"Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --body:"Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+body.is-sofia{ --me:var(--sofia); --me-soft:var(--sofia-soft); }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--me);outline-offset:2px;border-radius:8px}
+.app{max-width:520px;margin:0 auto;padding-inline:16px;padding-block:0 calc(92px + env(safe-area-inset-bottom,0px))}
+
+/* Top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px 10px}
+.logo{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.02em;line-height:1}
+.logo .c{color:var(--carlos)} .logo .s{color:var(--sofia)} .logo .f{color:var(--brand)}
+.who{display:flex;background:var(--surface-2);border-radius:999px;padding:3px;gap:2px}
+.who button{border:0;background:transparent;border-radius:999px;padding:6px 12px;font-weight:600;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.who button .dot{width:8px;height:8px;border-radius:50%}
+.who button[data-p="carlos"] .dot{background:var(--carlos)} .who button[data-p="sofia"] .dot{background:var(--sofia)}
+.who button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.icon-btn{border:0;background:var(--surface-2);width:36px;height:36px;border-radius:50%;display:grid;place-items:center}
+.icon-btn svg{width:18px;height:18px}
+
+h1,h2,h3{font-family:var(--display);letter-spacing:-.015em;text-wrap:balance;margin:0}
+h1{font-size:30px;font-weight:800;line-height:1.05}
+h2{font-size:20px;font-weight:700}
+h3{font-size:16px;font-weight:700}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:12px}
+.section{display:flex;flex-direction:column;gap:12px;margin-top:22px}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.link{border:0;background:none;color:var(--brand);font-weight:700;font-size:14px;padding:0}
+
+.panel{background:var(--surface);border-radius:20px;padding:16px;box-shadow:var(--shadow)}
+.num{font-variant-numeric:tabular-nums}
+
+/* Hoy hero */
+.hero{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;margin-top:6px}
+.hero p{margin:6px 0 0}
+.ring{width:118px;height:118px;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .lbl{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ring .lbl b{font-family:var(--display);font-size:24px;line-height:1}
+.ring .lbl span{font-size:11px;color:var(--muted)}
+.macros{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.macro{background:var(--surface-2);border-radius:14px;padding:10px}
+.macro b{display:block;font-family:var(--display);font-size:18px}
+.macro span{font-size:12px;color:var(--muted)}
+
+/* Meal rows */
+.meal{display:grid;grid-template-columns:74px 1fr auto;gap:12px;align-items:center;background:var(--surface);border-radius:18px;padding:12px;border:0;text-align:left;width:100%;box-shadow:var(--shadow)}
+.meal .slot{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.meal .title{font-weight:600;line-height:1.25}
+.meal .kcal{font-family:var(--display);font-weight:700;font-size:16px;color:var(--me);white-space:nowrap}
+.meal .kcal small{font-family:var(--body);font-weight:500;font-size:11px;color:var(--muted);display:block;text-align:right}
+.thumb{width:74px;height:62px;border-radius:14px;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:22px;color:var(--ink)}
+.t-des{background:var(--sun-soft)} .t-com{background:var(--brand-soft)} .t-cen{background:var(--carlos-soft)} .t-sna{background:var(--sofia-soft)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.tag{font-size:11px;font-weight:600;padding:3px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.tag.ok{background:var(--brand-soft);color:var(--brand)}
+.tag.warn{background:var(--sun-soft);color:var(--warn)}
+
+/* Days strip */
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.day{border:0;background:var(--surface);border-radius:14px;padding:8px 0;display:flex;flex-direction:column;align-items:center;gap:2px;box-shadow:var(--shadow)}
+.day span{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase}
+.day b{font-family:var(--display);font-size:18px}
+.day[aria-pressed="true"]{background:var(--me);color:#fff}
+.day[aria-pressed="true"] span{color:rgba(255,255,255,.85)}
+.day.today:not([aria-pressed="true"]) b{color:var(--me)}
+
+/* AI box */
+.ai{display:flex;gap:8px;background:var(--surface);border:1.5px dashed var(--line);border-radius:18px;padding:8px 8px 8px 14px;align-items:center}
+.ai input{flex:1;border:0;background:transparent;outline:none;min-width:0;padding:6px 0}
+.btn{border:0;border-radius:999px;padding:10px 16px;font-weight:700;background:var(--brand);color:var(--on-brand);white-space:nowrap}
+.btn.me{background:var(--me);color:#fff}
+.btn.ghost{background:var(--surface-2);color:var(--ink)}
+.btn.sm{padding:7px 12px;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* Sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,20,15,.45);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:24px 24px 0 0;padding:8px 18px calc(24px + env(safe-area-inset-bottom,0px))}
+.grab{width:42px;height:5px;border-radius:9px;background:var(--line);margin:4px auto 12px}
+.sheet-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.who-kcal{border-radius:14px;padding:10px 12px}
+.who-kcal.c{background:var(--carlos-soft)} .who-kcal.s{background:var(--sofia-soft)}
+.who-kcal b{font-family:var(--display);font-size:20px;display:block}
+.who-kcal span{font-size:12px;color:var(--muted)}
+.bar{display:flex;height:10px;border-radius:9px;overflow:hidden;background:var(--surface-2)}
+.bar i{display:block}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.ing{list-style:none;padding:0;margin:0;display:flex;flex-direction:column}
+.ing li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.ing li:last-child{border-bottom:0}
+.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.note{background:var(--surface);border-radius:16px;padding:12px 14px}
+.note.why{border-left:0}
+.note p{margin:4px 0 0}
+
+/* Compra */
+.progress{height:8px;background:var(--surface-2);border-radius:9px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--brand);border-radius:9px;transition:width .25s}
+.shop-group{background:var(--surface);border-radius:18px;padding:6px 14px;box-shadow:var(--shadow)}
+.shop-group h3{padding:10px 0 4px;font-size:14px;color:var(--muted);font-family:var(--body);text-transform:uppercase;letter-spacing:.06em}
+.item{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.item:first-of-type{border-top:0}
+.item input{width:22px;height:22px;accent-color:var(--brand);flex:none}
+.item label{flex:1;display:flex;justify-content:space-between;gap:10px}
+.item.done label{color:var(--muted);text-decoration:line-through}
+.add{display:flex;gap:8px}
+.add input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 14px}
+
+/* Entreno */
+.wk{display:flex;flex-direction:column;gap:10px}
+.session{background:var(--surface);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.session > button{width:100%;border:0;background:transparent;display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;padding:12px;text-align:left}
+.dchip{width:48px;height:48px;border-radius:14px;display:grid;place-content:center;text-align:center;font-weight:700;font-size:12px;line-height:1.1}
+.k-fuerza{background:var(--me-soft);color:var(--me)}
+.k-cardio{background:var(--brand-soft);color:var(--brand)}
+.k-movil{background:var(--sun-soft);color:var(--warn)}
+.k-rest{background:var(--surface-2);color:var(--muted)}
+.session .meta{font-size:13px;color:var(--muted)}
+.session.today{outline:2px solid var(--me)}
+.ex{padding:0 12px 12px;display:flex;flex-direction:column;gap:8px}
+.exi{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;background:var(--surface-2);border-radius:14px;padding:10px 12px}
+.exi input{width:20px;height:20px;accent-color:var(--me);margin-top:2px}
+.exi .dose{font-weight:700;font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.exi p{margin:2px 0 0;font-size:13px;color:var(--muted)}
+.alert{background:var(--sun-soft);border-radius:16px;padding:12px 14px;font-size:14px}
+.alert b{color:var(--warn)}
+
+/* Progreso */
+.person{display:flex;flex-direction:column;gap:12px}
+.person-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pname{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:700;font-size:18px}
+.pname i{width:12px;height:12px;border-radius:50%}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--surface-2);border-radius:14px;padding:10px}
+.kpi b{font-family:var(--display);font-size:20px;display:block;line-height:1.1}
+.kpi span{font-size:12px;color:var(--muted)}
+.chart svg{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-size:10px;font-family:var(--body)}
+.form-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:12px;color:var(--muted);font-weight:600}
+.field input,.field select,.field textarea{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 12px;width:100%;min-width:0}
+.calc{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:14px}
+.calc span:nth-child(even){font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+
+/* Perfil */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600}
+.chip[aria-pressed="true"]{background:var(--me);border-color:var(--me);color:#fff}
+.chip.x{background:var(--surface-2);border-color:transparent}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* Nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+.nav ul{list-style:none;margin:0 auto;padding:0;max-width:520px;display:grid;grid-template-columns:repeat(5,1fr)}
+.nav button{border:0;background:transparent;width:100%;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;font-size:11px;font-weight:600;color:var(--muted)}
+.nav svg{width:22px;height:22px}
+.nav button[aria-current="page"]{color:var(--me)}
+.nav button[aria-current="page"] .pill{background:var(--me-soft)}
+.nav .pill{padding:3px 16px;border-radius:999px;display:grid;place-items:center}
+
+.scale{display:grid;grid-template-columns:repeat(11,1fr);gap:4px}
+.scale button{border:0;border-radius:10px;padding:9px 0;font-weight:700;font-size:13px;background:var(--surface-2);font-variant-numeric:tabular-nums}
+.scale button.lo[aria-pressed="true"]{background:var(--brand);color:#fff}
+.scale button.mid[aria-pressed="true"]{background:var(--sun);color:#fff}
+.scale button.hi[aria-pressed="true"]{background:var(--bad);color:#fff}
+.scale-legend{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.sym{background:var(--surface);border:1.5px solid var(--me-soft)}
+.tag.lo{background:var(--brand-soft);color:var(--brand)} .tag.mid{background:var(--sun-soft);color:var(--warn)} .tag.hi{background:var(--bad-soft);color:var(--bad)}
+.dig{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.dig ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.dig li{display:flex;justify-content:space-between;gap:10px;font-size:14px}
+.login{position:fixed;inset:0;z-index:80;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.login form{width:100%;max-width:380px;display:flex;flex-direction:column;gap:12px}
+.login .logo{font-size:40px}
+.login .msg{font-size:14px;color:var(--bad);min-height:1.2em;margin:0}
+.toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:14px;font-size:14px;z-index:60;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
+.demo{font-size:12px;color:var(--muted);text-align:center;margin-top:18px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:380px){ .form-row{grid-template-columns:1fr 1fr} .form-row .btn{grid-column:1/-1} .who button{padding:6px 9px} }
+</style>
+
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="logo" aria-label="CarSofit"><span class="c">Car</span><span class="s">Sofi</span><span class="f">t</span></div>
+    <div class="row" style="gap:8px">
+      <div class="who" role="group" aria-label="¿Quién eres?">
+        <button data-p="carlos" aria-pressed="true"><i class="dot"></i>Carlos</button>
+        <button data-p="sofia" aria-pressed="false"><i class="dot"></i>Sofía</button>
+      </div>
+      <button class="icon-btn" id="btn-perfil" aria-label="Perfil y objetivos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+      </button>
+    </div>
+  </header>
+  <main id="view"></main>
+  <p class="demo">CarSofit · sincronizado entre los dos móviles</p>
+</div>
+
+<nav class="nav" aria-label="Secciones">
+  <ul>
+    <li><button data-v="hoy"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span>Hoy</button></li>
+    <li><button data-v="menu"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 3v8a3 3 0 0 0 3 3v7M7 3v5M10 3v8a3 3 0 0 1-3 3"/><path d="M17 21V3c-2.5 1-4 4-4 8h4"/></svg></span>Menú</button></li>
+    <li><button data-v="compra"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/><circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></svg></span>Compra</button></li>
+    <li><button data-v="entreno"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg></span>Entreno</button></li>
+    <li><button data-v="progreso"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 20h18"/><path d="M5 16l4-5 4 3 6-8"/></svg></span>Progreso</button></li>
+  </ul>
+</nav>
+
+<div id="sheet-root"></div>
+<div id="toast-root" aria-live="polite"></div>
+
+<script src="vendor/supabase.js"></script>
+<script>
+/* =========================================================
+   CarSofit · prototipo fase 1
+   Datos de ejemplo. En la fase 2 se sustituyen por Supabase
+   y en la fase 3 los platos y entrenos los genera Gemini.
+   ========================================================= */
+
+// ---------- Platos (ración estándar) ----------
+// ing: [nombre, cantidad, unidad, sección]
+const DISHES = {
+  // Desayunos
+  d_gachas:{slot:"des",name:"Gachas de avena con kiwi y nueces",kcal:410,p:16,c:56,g:14,f:8,time:"8 min",tool:"Thermomix",
+    ing:[["Copos de avena",50,"g","Despensa"],["Leche sin lactosa",200,"ml","Lácteos y huevos"],["Kiwi",1,"ud","Frutería"],["Nueces",15,"g","Despensa"],["Canela",1,"pizca","Despensa"]],
+    steps:["Thermomix: avena + leche + canela, 6 min / 90 °C / vel 1 con giro inverso.","Sirve y corona con el kiwi en dados y las nueces troceadas."],
+    why:"Los beta-glucanos de la avena ayudan a bajar el colesterol LDL; el kiwi aporta vitamina C y fibra con muy poca fructosa libre.",
+    micro:"El beta-glucano fermenta en el colon y produce butirato, el combustible de las células intestinales.",
+    sofia:"Apto: la avena en ración de 50 g y el kiwi se toleran bien con intolerancia a la fructosa."},
+  d_tostada:{slot:"des",name:"Tostada de masa madre con huevo revuelto y tomate",kcal:390,p:19,c:38,g:17,f:5,time:"10 min",tool:"Vitrocerámica",
+    ing:[["Pan de masa madre de espelta",80,"g","Panadería"],["Huevos",2,"ud","Lácteos y huevos"],["Tomate",1,"ud","Frutería"],["Aceite de oliva virgen extra",10,"ml","Despensa"]],
+    steps:["Tuesta el pan.","Revuelto a fuego medio sin prisa, hasta que el huevo quede bien cuajado.","Tomate en rodajas con un hilo de aceite."],
+    why:"Proteína completa del huevo para empezar el día saciado; el tomate con aceite multiplica la absorción de licopeno.",
+    micro:"La fermentación larga de la masa madre reduce los fructanos del cereal y lo hace más digestivo.",
+    sofia:"Apto: masa madre de espelta y huevo bien hecho."},
+  d_yogur:{slot:"des",name:"Bol de yogur sin lactosa con fresas, arándanos y chía",kcal:340,p:18,c:32,g:15,f:9,time:"3 min",tool:"Sin cocción",
+    ing:[["Yogur natural sin lactosa",250,"g","Lácteos y huevos"],["Fresas",100,"g","Frutería"],["Arándanos",50,"g","Frutería"],["Semillas de chía",15,"g","Despensa"],["Nueces",10,"g","Despensa"]],
+    steps:["Mezcla la chía con el yogur y deja reposar 2 min.","Añade la fruta lavada y las nueces."],
+    why:"Probióticos del yogur y antocianinas de los frutos rojos; la chía suma omega-3 vegetal y fibra soluble.",
+    micro:"Probióticos + fibra de chía: bacterias vivas y alimento para ellas en el mismo bol.",
+    sofia:"Apto: fresas y arándanos son frutas bajas en fructosa."},
+  d_tortitas:{slot:"des",name:"Tortitas de avena y plátano",kcal:420,p:22,c:54,g:12,f:6,time:"12 min",tool:"Thermomix + sartén",
+    ing:[["Copos de avena",50,"g","Despensa"],["Plátano firme",1,"ud","Frutería"],["Huevos",2,"ud","Lácteos y huevos"],["Canela",1,"pizca","Despensa"],["Aceite de oliva virgen extra",5,"ml","Despensa"]],
+    steps:["Thermomix: todo junto 20 s / vel 6.","Sartén antiadherente a fuego medio, 2 min por cada lado hasta dorar."],
+    why:"Hidratos de absorción lenta y proteína: energía estable toda la mañana.",
+    micro:"El plátano poco maduro tiene almidón resistente, que actúa como prebiótico.",
+    sofia:"Apto si el plátano está firme; muy maduro tiene más fructosa libre."},
+  // Comidas
+  c_pollo:{slot:"com",name:"Pollo al limón con arroz basmati y calabacín",kcal:560,p:42,c:62,g:14,f:4,time:"25 min",tool:"Freidora de aire",
+    ing:[["Contramuslo de pollo sin piel",150,"g","Carne y pescado"],["Arroz basmati",70,"g","Despensa"],["Calabacín",150,"g","Frutería"],["Limón",0.5,"ud","Frutería"],["Aceite de oliva virgen extra",10,"ml","Despensa"],["Romero",1,"pizca","Despensa"]],
+    steps:["Marina el pollo con limón, romero y aceite 10 min.","Freidora: pollo 190 °C 18 min en una cesta y calabacín 200 °C 10 min en la otra (sincroniza).","Arroz en el cestillo de la Thermomix, 15 min / Varoma / vel 1."],
+    why:"Proteína magra y cocción sin fritura; el limón aporta sabor sin sal añadida.",
+    micro:"Si cocinas el arroz la víspera y lo recalientas, gana almidón resistente.",
+    sofia:"Apto."},
+  c_lentejas:{slot:"com",name:"Lentejas estofadas con zanahoria, patata y comino",kcal:520,p:26,c:72,g:11,f:14,time:"25 min",tool:"Thermomix",
+    ing:[["Lentejas cocidas de bote",150,"g","Despensa"],["Zanahoria",100,"g","Frutería"],["Patata",120,"g","Frutería"],["Pimiento rojo",60,"g","Frutería"],["Cebolleta (solo parte verde)",20,"g","Frutería"],["Aceite de oliva virgen extra",10,"ml","Despensa"],["Pimentón y comino",1,"pizca","Despensa"]],
+    steps:["Sofrito de pimiento y parte verde de cebolleta: 5 min / 120 °C / vel 1.","Añade zanahoria, patata, especias y 400 ml de agua: 15 min / 100 °C / giro inverso.","Incorpora las lentejas bien enjuagadas y 5 min más."],
+    why:"Fibra soluble y proteína vegetal: aliadas directas contra el colesterol.",
+    micro:"Legumbre = el prebiótico por excelencia; enjuagar la de bote reduce los azúcares que dan gases.",
+    sofia:"Con precaución: ración moderada y lentejas de bote enjuagadas. Evitar en brote."},
+  c_caballa:{slot:"com",name:"Caballa al horno con patatas y pimiento asado",kcal:590,p:34,c:45,g:29,f:6,time:"30 min",tool:"Freidora de aire",
+    ing:[["Lomos de caballa",150,"g","Carne y pescado"],["Patata",200,"g","Frutería"],["Pimiento rojo",100,"g","Frutería"],["Aceite de oliva virgen extra",10,"ml","Despensa"],["Perejil",1,"pizca","Frutería"]],
+    steps:["Freidora: patata en gajos y pimiento 180 °C 20 min.","Añade la caballa y 10 min a 190 °C hasta que esté bien hecha."],
+    why:"Pescado azul: omega-3 EPA/DHA que bajan triglicéridos y tienen efecto antiinflamatorio.",
+    micro:"El omega-3 favorece bacterias productoras de butirato.",
+    sofia:"Apto: pescado bien cocinado."},
+  c_quinoa:{slot:"com",name:"Quinoa salteada con pavo, calabacín y zanahoria",kcal:540,p:38,c:55,g:16,f:7,time:"20 min",tool:"Thermomix + sartén",
+    ing:[["Quinoa",70,"g","Despensa"],["Pechuga de pavo",140,"g","Carne y pescado"],["Calabacín",120,"g","Frutería"],["Zanahoria",80,"g","Frutería"],["Jengibre fresco",5,"g","Frutería"],["Salsa de soja",10,"ml","Despensa"],["Aceite de oliva virgen extra",10,"ml","Despensa"]],
+    steps:["Quinoa lavada en el cestillo: 15 min / 100 °C / vel 1.","Saltea pavo en tiras a fuego fuerte, añade verduras 5 min.","Mezcla con la quinoa, jengibre rallado y soja."],
+    why:"Quinoa: proteína con todos los aminoácidos esenciales y sin gluten.",
+    micro:"Variedad vegetal = variedad bacteriana; el jengibre calma el intestino.",
+    sofia:"Apto."},
+  c_berenjena:{slot:"com",name:"Berenjena crujiente con pollo y salsa de yogur",kcal:520,p:40,c:40,g:20,f:7,time:"25 min",tool:"Freidora de aire",
+    ing:[["Berenjena",200,"g","Frutería"],["Pechuga de pollo",130,"g","Carne y pescado"],["Pan rallado panko",25,"g","Despensa"],["Huevos",1,"ud","Lácteos y huevos"],["Yogur natural sin lactosa",60,"g","Lácteos y huevos"],["Hierbabuena",1,"pizca","Frutería"],["Aceite de oliva virgen extra",10,"ml","Despensa"]],
+    steps:["Rodajas de berenjena de 1 cm: pásalas por huevo y panko, pulveriza aceite.","Freidora 200 °C 12-14 min, dando la vuelta a mitad: textura de frita sin sartén.","Pollo a la plancha y salsa de yogur con hierbabuena picada."],
+    why:"Como os gusta: crujiente tipo frita, con una fracción del aceite.",
+    micro:"La piel de la berenjena lleva nasunina, un polifenol antioxidante: no la peles.",
+    sofia:"Apto."},
+  c_arroz:{slot:"com",name:"Arroz meloso de sepia y gambas",kcal:580,p:36,c:70,g:14,f:4,time:"30 min",tool:"Thermomix",
+    ing:[["Arroz redondo",75,"g","Despensa"],["Sepia limpia",120,"g","Carne y pescado"],["Gambas peladas",80,"g","Carne y pescado"],["Tomate triturado",80,"g","Despensa"],["Pimiento rojo",60,"g","Frutería"],["Caldo de pescado casero",300,"ml","Despensa"],["Aceite de oliva virgen extra",12,"ml","Despensa"],["Azafrán",1,"pizca","Despensa"]],
+    steps:["Sofrito de pimiento y sepia: 7 min / 120 °C / giro inverso / vel cuchara.","Tomate 3 min; añade arroz, caldo y azafrán: 13 min / 100 °C / giro inverso.","Gambas los últimos 4 min. Reposa 3 min."],
+    why:"Marisco: proteína magra, yodo y zinc con muy poca grasa saturada.",
+    micro:"Caldo casero sin cebolla ni ajo: el comercial casi siempre los lleva.",
+    sofia:"Apto con caldo casero (sin cebolla ni ajo)."},
+  c_asado:{slot:"com",name:"Pollo asado con patatas y zanahorias al romero",kcal:600,p:44,c:50,g:22,f:6,time:"35 min",tool:"Freidora de aire",
+    ing:[["Muslos de pollo sin piel",180,"g","Carne y pescado"],["Patata",200,"g","Frutería"],["Zanahoria",120,"g","Frutería"],["Limón",0.5,"ud","Frutería"],["Aceite de oliva virgen extra",12,"ml","Despensa"],["Romero y tomillo",1,"pizca","Despensa"]],
+    steps:["Zona 1: pollo marinado 190 °C 25 min.","Zona 2: patata y zanahoria 200 °C 25 min, con 'Sync' para que acaben a la vez."],
+    why:"Plato de domingo completo sin grasa añadida de más.",
+    micro:"Zanahoria cocinada: más betacaroteno disponible.",
+    sofia:"Apto."},
+  // Cenas
+  n_crema:{slot:"cen",name:"Crema de calabacín y zanahoria con tortilla francesa",kcal:380,p:20,c:22,g:22,f:6,time:"25 min",tool:"Thermomix",
+    ing:[["Calabacín",250,"g","Frutería"],["Zanahoria",100,"g","Frutería"],["Patata",60,"g","Frutería"],["Huevos",2,"ud","Lácteos y huevos"],["Aceite de oliva virgen extra",10,"ml","Despensa"]],
+    steps:["Verduras + 300 ml de agua: 20 min / 100 °C / vel 1.","Tritura 1 min / vel 5-10 progresivo con el aceite en crudo.","Tortilla francesa bien cuajada."],
+    why:"Cena ligera y saciante, fácil de digerir.",
+    micro:"Verdura cocida y triturada: fibra suave para días de intestino sensible.",
+    sofia:"Muy recomendable en brote."},
+  n_merluza:{slot:"cen",name:"Merluza en papillote con patata y pimientos",kcal:400,p:32,c:38,g:12,f:5,time:"25 min",tool:"Thermomix (Varoma)",
+    ing:[["Merluza",180,"g","Carne y pescado"],["Patata",150,"g","Frutería"],["Pimiento rojo",60,"g","Frutería"],["Limón",0.5,"ud","Frutería"],["Aceite de oliva virgen extra",10,"ml","Despensa"]],
+    steps:["Patata en rodajas finas en el Varoma, merluza y pimiento en papillote encima.","500 ml de agua en el vaso: 22 min / Varoma / vel 1."],
+    why:"Pescado blanco al vapor: la opción más digestiva de la semana.",
+    micro:"Cocción suave que conserva proteínas y vitaminas del grupo B.",
+    sofia:"Muy recomendable en brote."},
+  n_revuelto:{slot:"cen",name:"Revuelto de espinacas y gambas con pan de masa madre",kcal:410,p:30,c:28,g:19,f:4,time:"12 min",tool:"Vitrocerámica",
+    ing:[["Huevos",2,"ud","Lácteos y huevos"],["Espinacas frescas",100,"g","Frutería"],["Gambas peladas",80,"g","Carne y pescado"],["Pan de masa madre de espelta",40,"g","Panadería"],["Aceite de oliva virgen extra",8,"ml","Despensa"]],
+    steps:["Saltea gambas 2 min, añade espinacas hasta que reduzcan.","Incorpora los huevos batidos y remueve hasta que cuajen del todo."],
+    why:"Hierro y folato de la espinaca con proteína de calidad.",
+    micro:"Las espinacas aportan un azúcar especial (sulfoquinovosa) que alimenta bacterias beneficiosas.",
+    sofia:"Apto."},
+  n_salmon:{slot:"cen",name:"Salmón al horno con puré de patata y zanahoria",kcal:480,p:31,c:32,g:24,f:5,time:"20 min",tool:"Freidora + Thermomix",
+    ing:[["Lomo de salmón fresco",140,"g","Carne y pescado"],["Patata",150,"g","Frutería"],["Zanahoria",80,"g","Frutería"],["Aceite de oliva virgen extra",5,"ml","Despensa"],["Eneldo",1,"pizca","Despensa"]],
+    steps:["Freidora 180 °C 12 min: hecho del todo, sin centro crudo.","Puré en Thermomix: 20 min / 100 °C con agua, escurre y tritura con el aceite."],
+    why:"Omega-3 y vitamina D; grasa cardiosaludable para el objetivo de colesterol.",
+    micro:"Omega-3 + fibra de zanahoria: combinación antiinflamatoria.",
+    sofia:"Apto: salmón fresco bien hecho (no ahumado)."},
+  n_pavo:{slot:"cen",name:"Pavo a la plancha con ensalada de canónigos, pepino y tomate",kcal:380,p:36,c:18,g:17,f:5,time:"12 min",tool:"Vitrocerámica",
+    ing:[["Pechuga de pavo",150,"g","Carne y pescado"],["Canónigos",60,"g","Frutería"],["Pepino",100,"g","Frutería"],["Tomate",120,"g","Frutería"],["Pipas de calabaza",10,"g","Despensa"],["Aceite de oliva virgen extra",10,"ml","Despensa"]],
+    steps:["Pavo a la plancha 4 min por lado.","Ensalada aliñada con aceite y unas pipas tostadas."],
+    why:"Cena alta en proteína y baja en calorías para el déficit de Carlos.",
+    micro:"Las pipas de calabaza aportan zinc y fibra.",
+    sofia:"En brote, cambia la ensalada cruda por verdura cocinada."},
+  n_pizza:{slot:"cen",name:"Pizza de masa madre con pollo, pimiento y mozzarella sin lactosa",kcal:540,p:34,c:58,g:18,f:4,time:"15 min",tool:"Freidora de aire",
+    ing:[["Base de pizza de masa madre",100,"g","Panadería"],["Pechuga de pollo",80,"g","Carne y pescado"],["Pimiento rojo",60,"g","Frutería"],["Mozzarella sin lactosa",50,"g","Lácteos y huevos"],["Tomate triturado",60,"g","Despensa"],["Orégano",1,"pizca","Despensa"]],
+    steps:["Monta la pizza con el pollo ya cocinado y desmenuzado.","Freidora 200 °C 8 min."],
+    why:"La cena de sábado, sin salirse del plan.",
+    micro:"Masa madre: fermentación que predigiere parte del cereal.",
+    sofia:"Apto: sin ajo en la salsa."},
+  n_tortilla:{slot:"cen",name:"Tortilla de patata y calabacín con ensalada de tomate",kcal:420,p:20,c:34,g:22,f:5,time:"30 min",tool:"Freidora de aire",
+    ing:[["Huevos",2,"ud","Lácteos y huevos"],["Patata",150,"g","Frutería"],["Calabacín",100,"g","Frutería"],["Tomate",120,"g","Frutería"],["Aceite de oliva virgen extra",12,"ml","Despensa"]],
+    steps:["Patata y calabacín en láminas en la freidora 180 °C 15 min con un poco de aceite.","Mezcla con el huevo y cuaja en sartén hasta que esté bien hecha por dentro."],
+    why:"La tortilla de siempre con la mitad de aceite.",
+    micro:"Calabacín: fibra suave y agua, bien tolerado.",
+    sofia:"Apto: tortilla bien cuajada."},
+  // Tentempiés
+  s_bizcocho:{slot:"sna",name:"Bizcocho proteico de plátano, avena y cacao",kcal:190,p:12,c:22,g:6,f:3,time:"35 min · 8 porciones",tool:"Thermomix + freidora",
+    ing:[["Copos de avena",19,"g","Despensa"],["Plátano firme",0.25,"ud","Frutería"],["Huevos",0.4,"ud","Lácteos y huevos"],["Yogur natural sin lactosa",16,"g","Lácteos y huevos"],["Proteína de suero aislada sin lactosa",5,"g","Despensa"],["Cacao puro en polvo",2,"g","Despensa"]],
+    steps:["Para el bizcocho entero (8 porciones): 150 g avena, 2 plátanos firmes, 3 huevos, 125 g yogur sin lactosa, 40 g proteína, 15 g cacao, 8 g levadura y canela.","Thermomix 20 s / vel 5.","Molde en la freidora 160 °C 25-30 min. Aguanta 4 días en la nevera."],
+    why:"Tentempié con proteína para no llegar con hambre a la cena.",
+    micro:"Sin edulcorantes tipo sorbitol, maltitol o xilitol: dan síntomas con intolerancia a la fructosa.",
+    sofia:"Apto: sin miel, sin sirope y sin polioles."},
+  s_zanahoria:{slot:"sna",name:"Palitos de zanahoria con crema de cacahuete",kcal:180,p:7,c:10,g:13,f:4,time:"3 min",tool:"Sin cocción",
+    ing:[["Zanahoria",100,"g","Frutería"],["Crema de cacahuete 100 %",20,"g","Despensa"]],
+    steps:["Corta en bastones y moja en la crema."],
+    why:"Crujiente, saciante y con grasa buena.",micro:"Fibra insoluble de la zanahoria cruda.",sofia:"Apto (evitar crudo en brote)."},
+  s_kiwi:{slot:"sna",name:"Kiwi y un puñado de nueces",kcal:170,p:4,c:12,g:12,f:3,time:"1 min",tool:"Sin cocción",
+    ing:[["Kiwi",1,"ud","Frutería"],["Nueces",15,"g","Despensa"]],
+    steps:["Pela y listo."],why:"Omega-3 vegetal y vitamina C.",micro:"El kiwi ayuda al tránsito intestinal.",sofia:"Apto."},
+  s_yogur:{slot:"sna",name:"Yogur sin lactosa con arándanos",kcal:140,p:9,c:14,g:5,f:2,time:"1 min",tool:"Sin cocción",
+    ing:[["Yogur natural sin lactosa",125,"g","Lácteos y huevos"],["Arándanos",40,"g","Frutería"]],
+    steps:["Mezcla y listo."],why:"Proteína y probióticos.",micro:"Probióticos + polifenoles.",sofia:"Apto."}
+};
+const SLOTS = {des:"Desayuno",com:"Comida",cen:"Cena",sna:"Tentempié"};
+const SLOT_LETTER = {des:"D",com:"C",cen:"N",sna:"T"};
+const DAY_NAMES = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+const DAY_SHORT = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+
+const DEFAULT_WEEK = [
+  {des:"d_gachas",com:"c_pollo",cen:"n_crema",sna:"s_bizcocho"},
+  {des:"d_tostada",com:"c_lentejas",cen:"n_merluza",sna:"s_zanahoria"},
+  {des:"d_yogur",com:"c_caballa",cen:"n_revuelto",sna:"s_bizcocho"},
+  {des:"d_tortitas",com:"c_quinoa",cen:"n_salmon",sna:"s_kiwi"},
+  {des:"d_gachas",com:"c_berenjena",cen:"n_pavo",sna:"s_bizcocho"},
+  {des:"d_tostada",com:"c_arroz",cen:"n_pizza",sna:"s_yogur"},
+  {des:"d_tortitas",com:"c_asado",cen:"n_tortilla",sna:"s_kiwi"}
+];
+
+// ---------- Ejercicios ----------
+const EX = {
+  goblet:["Sentadilla goblet","3 × 12","Mancuerna de 10 kg al pecho, baja hasta que la cadera pase la rodilla."],
+  floorpress:["Press de pecho en suelo","3 × 10","Tumbado en la esterilla, codos a 45°."],
+  row:["Remo a una mano","3 × 12 / lado","Apoyado en una silla, lleva el codo hacia la cadera."],
+  bridge:["Puente de glúteo con banda","3 × 15","Banda sobre las rodillas, empuja hacia fuera al subir."],
+  plank:["Plancha frontal","3 × 30 s","Glúteo apretado, sin hundir la zona lumbar."],
+  heel:["Elevación de talones lenta en escalón","3 × 12","3 s arriba, 3 s abajo. Toalla enrollada bajo los dedos: trabaja la fascia plantar."],
+  lunge:["Zancada hacia atrás","3 × 10 / lado","Hacia atrás castiga menos el pie que hacia delante."],
+  rdl:["Peso muerto rumano","3 × 12","Espalda neutra, lleva la cadera atrás y siente el isquio."],
+  press:["Press militar sentado","3 × 10","Sin arquear la espalda."],
+  facepull:["Face pull con banda","3 × 15","Banda a la altura de la cara, abre los codos."],
+  deadbug:["Bicho muerto","3 × 10","Lumbar pegada al suelo en todo momento."],
+  fascia:["Estiramiento de fascia y gemelo","5 min","Tira de los dedos hacia ti 30 s ×3 y gemelo contra la pared 30 s ×3. Rueda una pelota bajo el pie."],
+  walk:["Caminata a ritmo vivo","45 min","Puedes hablar, pero no cantar (zona 2)."],
+  walkint:["Caminata con cambios de ritmo","50 min","10 min suave + 6 × (2 min muy rápido / 2 min suave) + 16 min suave."],
+  walklong:["Ruta larga","75 min","Terreno blando si puedes (tierra, parque)."],
+  mob:["Movilidad de cadera y columna","15 min","Gato-camello, 90/90, rotaciones torácicas."],
+  pilates:["Pilates de suelo","30 min","Centro, respiración y control."],
+  walk40:["Caminata suave","40 min","Ritmo cómodo, ideal después de comer."],
+  squatbw:["Sentadilla a caja o silla","3 × 12","Toca la silla y sube."],
+  glute2:["Puente de glúteo","3 × 15","Pausa de 2 s arriba."],
+  rowband:["Remo con banda","3 × 15","Hombros atrás y abajo."],
+  birddog:["Pájaro-perro","3 × 8 / lado","Lento y controlado."],
+  breath:["Respiración diafragmática","5 min","Tumbada, mano en el abdomen. Ayuda al eje intestino-cerebro."],
+  stretch:["Estiramientos globales","10 min","Isquios, cadera, espalda."]
+};
+const SESSIONS = {
+  carlos:[
+    {k:"fuerza",name:"Fuerza A · cuerpo completo",min:45,ex:["goblet","floorpress","row","bridge","plank","heel","fascia"]},
+    {k:"cardio",name:"Caminata a ritmo vivo",min:50,ex:["walk","fascia"]},
+    {k:"fuerza",name:"Fuerza B · cuerpo completo",min:45,ex:["lunge","rdl","press","facepull","deadbug","heel","fascia"]},
+    {k:"cardio",name:"Caminata con cambios de ritmo",min:55,ex:["walkint","fascia"]},
+    {k:"cardio",name:"Ruta larga + movilidad",min:90,ex:["walklong","mob","fascia"]}
+  ],
+  sofia:[
+    {k:"fuerza",name:"Fuerza suave + core",min:35,ex:["squatbw","glute2","rowband","birddog","breath"]},
+    {k:"cardio",name:"Caminata suave",min:40,ex:["walk40","stretch"]},
+    {k:"movil",name:"Pilates y movilidad",min:40,ex:["pilates","breath"]},
+    {k:"cardio",name:"Caminata a ritmo vivo",min:45,ex:["walk","stretch"]},
+    {k:"fuerza",name:"Fuerza suave B",min:35,ex:["goblet","bridge","rowband","deadbug","breath"]}
+  ]
+};
+
+// ---------- Estado ----------
+const TODAY = new Date();
+const TODAY_IDX = (TODAY.getDay()+6)%7;
+const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const TODAY_ISO = iso(TODAY);
+function dayDate(i){ const d=new Date(TODAY); d.setDate(TODAY.getDate()-TODAY_IDX+i); return iso(d); }
+const START_ISO = "2026-09-23";
+
+const DEFAULT_STATE = {
+  person:"carlos",
+  view:"hoy",
+  day:TODAY_IDX,
+  week:JSON.parse(JSON.stringify(DEFAULT_WEEK)),
+  shop:{}, extras:[],
+  done:{},
+  symptoms:[],
+  profiles:{
+    carlos:{name:"Carlos",sex:"h",age:28,height:176,activity:1.4,goal:"Perder grasa y tonificar",pace:0.5,
+      days:[0,1,2,3,5],restrictions:["Coliflor","Judías verdes","Salmón ahumado","Berenjena al vapor o en guiso"],
+      health:["Fascitis plantar","Colesterol elevado (sin tratamiento)"]},
+    sofia:{name:"Sofía",sex:"m",birth:"1999-10-09",age:26,height:160,activity:1.4,goal:"Comer bien y evitar brotes de colitis",pace:0,
+      days:[0,1,3,4],restrictions:["Coliflor","Judías verdes","Salmón ahumado","Berenjena al vapor o en guiso","Comida cruda o poco hecha"],
+      health:["Intolerancia a la fructosa","Colitis inespecífica"]}
+  },
+  logs:[
+    {p:"carlos",d:START_ISO,w:91,bf:null},
+    {p:"sofia",d:START_ISO,w:60,bf:null}
+  ]
+};
+const KEY="carsofit-v2";
+let S;
+try{ S = JSON.parse(localStorage.getItem(KEY)) || null; }catch(e){ S=null; }
+if(!S) S = JSON.parse(JSON.stringify(DEFAULT_STATE));
+S.day = TODAY_IDX; S.view = S.view || "hoy"; S.symptoms = S.symptoms || [];
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+// ---------- Cálculos ----------
+function lastLog(p){ return S.logs.filter(l=>l.p===p).sort((a,b)=>a.d<b.d?-1:1).at(-1); }
+function ageOf(pr){
+  if(pr.birth){ const b=new Date(pr.birth+"T12:00"); let a=TODAY.getFullYear()-b.getFullYear();
+    if(TODAY.getMonth()<b.getMonth()||(TODAY.getMonth()===b.getMonth()&&TODAY.getDate()<b.getDate())) a--; return a; }
+  return pr.age;
+}
+function energy(p){
+  const pr=S.profiles[p]; const w=lastLog(p)?.w; const age=ageOf(pr);
+  if(!age||!pr.height||!w) return null;
+  const bmr = 10*w + 6.25*pr.height - 5*age + (pr.sex==="h"?5:-161);
+  const tdee = bmr*pr.activity;
+  const deficit = pr.pace>0 ? Math.min(pr.pace*1100, tdee*0.22) : 0; // ~7700 kcal por kg / 7 días
+  const target = Math.round((tdee-deficit)/10)*10;
+  const bmi = w/((pr.height/100)**2);
+  const protein = Math.round((pr.pace>0?1.6:1.4)*w);
+  return {bmr:Math.round(bmr),tdee:Math.round(tdee),target,bmi,protein};
+}
+function targetKcal(p){ return energy(p)?.target ?? 1800; }
+function dayBase(i){ const d=S.week[i]; return Object.values(d).reduce((s,id)=>s+DISHES[id].kcal,0); }
+function factor(p,i){ return targetKcal(p)/dayBase(i); }
+function dayMacros(p,i){
+  const f=factor(p,i); const t={kcal:0,p:0,c:0,g:0,f:0};
+  Object.values(S.week[i]).forEach(id=>{const x=DISHES[id]; t.kcal+=x.kcal*f; t.p+=x.p*f; t.c+=x.c*f; t.g+=x.g*f; t.f+=x.f*f;});
+  return t;
+}
+const r0 = n => Math.round(n);
+const fmt = n => new Intl.NumberFormat("es-ES").format(n);
+
+// ---------- Diario digestivo ----------
+const SYMS=["Hinchazón","Gases","Dolor abdominal","Diarrea","Urgencia","Estreñimiento","Ardor","Náuseas"];
+const lvl = n => n<=2?"lo":n<=5?"mid":"hi";
+function symFor(p,d,slot){ return S.symptoms.find(x=>x.p===p&&x.d===d&&x.slot===slot); }
+function digest(p){
+  const L=S.symptoms.filter(x=>x.p===p); if(!L.length) return null;
+  const from=new Date(TODAY); from.setDate(TODAY.getDate()-6); const fromIso=iso(from);
+  const wk=L.filter(x=>x.d>=fromIso);
+  const by={}; L.forEach(x=>{ const o=(by[x.dish] ||= {name:x.name,n:0,sum:0}); o.n++; o.sum+=x.score; });
+  const dishes=Object.values(by).map(o=>({...o,avg:o.sum/o.n}));
+  const sy={}; L.forEach(x=>x.sy.forEach(k=>sy[k]=(sy[k]||0)+1));
+  return { n:L.length, wkAvg: wk.length? wk.reduce((a,x)=>a+x.score,0)/wk.length : null,
+    good: dishes.filter(o=>o.avg<=2).sort((a,b)=>a.avg-b.avg).slice(0,4),
+    bad: dishes.filter(o=>o.avg>=5).sort((a,b)=>b.avg-a.avg).slice(0,4),
+    top: Object.entries(sy).sort((a,b)=>b[1]-a[1]).slice(0,3) };
+}
+let DRAFT=null;
+function symBlock(id,i,slot){
+  const p=S.person, d=dayDate(i), pr=S.profiles[p];
+  if(d>TODAY_ISO) return `<div class="note"><h3>¿Cómo sentó?</h3><p class="muted">Podrás registrarlo el ${DAY_NAMES[i].toLowerCase()}, después de comer.</p></div>`;
+  const prev=symFor(p,d,slot);
+  DRAFT={p,d,slot,dish:id,name:DISHES[id].name,score:prev?.score??null,sy:[...(prev?.sy||[])],note:prev?.note||""};
+  return `<div class="note sym stack" id="sym-box"><h3>¿Cómo le sentó a ${esc(pr.name)}?</h3>
+    <div class="scale" role="group" aria-label="Malestar de 0 a 10">${[...Array(11).keys()].map(n=>`<button class="${lvl(n)}" data-score="${n}" aria-pressed="${DRAFT.score===n}">${n}</button>`).join("")}</div>
+    <div class="scale-legend"><span>0 · genial</span><span>10 · fatal</span></div>
+    <div class="chips">${SYMS.map(k=>`<button class="chip" data-sy="${k}" aria-pressed="${DRAFT.sy.includes(k)}">${k}</button>`).join("")}</div>
+    <div class="field"><label for="sym-note">Nota (opcional)</label><input id="sym-note" value="${esc(DRAFT.note)}" placeholder="Comí rápido, estaba nerviosa…"></div>
+    <div class="row"><button class="btn me sm" id="sym-save">${prev?"Actualizar":"Guardar"}</button>${prev?`<span class="muted" style="font-size:13px">Registrado: ${prev.score}/10</span>`:""}</div></div>`;
+}
+
+// ---------- UI helpers ----------
+const $ = s => document.querySelector(s);
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function toast(msg){ const r=$("#toast-root"); r.innerHTML=`<div class="toast">${esc(msg)}</div>`; clearTimeout(toast.t); toast.t=setTimeout(()=>r.innerHTML="",2800); }
+function ring(val,max,color){
+  const R=50,C=2*Math.PI*R, pct=Math.max(0,Math.min(1,val/max));
+  return `<svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--surface-2)" stroke-width="12"/><circle cx="60" cy="60" r="${R}" fill="none" stroke="${color}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C*pct} ${C}"/></svg>`;
+}
+function sessionForDay(p,i){
+  const days=[...S.profiles[p].days].sort((a,b)=>a-b); const pos=days.indexOf(i);
+  if(pos<0) return null; const list=SESSIONS[p]; return list[pos%list.length];
+}
+function kLabel(k){ return {fuerza:"Fuerza",cardio:"Cardio",movil:"Movil.",rest:"Relax"}[k]; }
+
+// ---------- Vistas ----------
+function mealRow(id,i,slot){
+  const x=DISHES[id], p=S.person, f=factor(p,i);
+  return `<button class="meal" data-dish="${id}" data-day="${i}" data-slot="${slot}">
+    <div class="thumb t-${slot}">${SLOT_LETTER[slot]}</div>
+    <div><div class="slot">${SLOTS[slot]}</div><div class="title">${esc(x.name)}</div>
+    <div class="tags"><span class="tag">${esc(x.tool)}</span><span class="tag">${esc(x.time)}</span>${(()=>{const sy=symFor(p,dayDate(i),slot);return sy?`<span class="tag ${lvl(sy.score)}">Sentó ${sy.score}/10</span>`:""})()}</div></div>
+    <div class="kcal num">${fmt(r0(x.kcal*f))}<small>kcal</small></div></button>`;
+}
+
+function vHoy(){
+  const p=S.person, pr=S.profiles[p], i=TODAY_IDX, m=dayMacros(p,i), tgt=targetKcal(p), e=energy(p);
+  const ses=sessionForDay(p,i);
+  const d=S.week[i]; const protT = e?e.protein:Math.round(1.4*(lastLog(p)?.w||60));
+  return `
+  <section class="hero">
+    <div><div class="eyebrow">${DAY_NAMES[i]} · ${TODAY.toLocaleDateString("es-ES",{day:"numeric",month:"long"})}</div>
+      <h1>Hola, ${esc(pr.name)}</h1>
+      <p class="muted">${esc(pr.goal)}.${e?"":" <b>Faltan edad y altura</b> para ajustar tus calorías."}</p></div>
+    <div class="ring">${ring(m.p,protT,"var(--me)")}<div class="lbl"><b class="num">${r0(m.p)} g</b><span>de ${protT} g prot.</span></div></div>
+  </section>
+  <div class="macros">
+    <div class="macro"><b class="num">${fmt(r0(m.kcal))}</b><span>kcal del menú</span></div>
+    <div class="macro"><b class="num">${r0(m.c)} g</b><span>Hidratos</span></div>
+    <div class="macro"><b class="num">${r0(m.f)} g</b><span>Fibra</span></div>
+  </div>
+  <section class="section">
+    <div class="section-head"><h2>Hoy se come</h2><button class="link" data-go="menu">Semana completa</button></div>
+    ${["des","com","cen","sna"].map(s=>mealRow(d[s],i,s)).join("")}
+    <p class="muted" style="margin:0;font-size:13px">Pulsa un plato después de comerlo para apuntar cómo te sentó.</p>
+  </section>
+  <section class="section">
+    <div class="section-head"><h2>Hoy toca</h2><button class="link" data-go="entreno">Plan semanal</button></div>
+    ${ses?`<button class="meal" data-go="entreno"><div class="thumb ${ses.k==="fuerza"?"k-fuerza":ses.k==="cardio"?"k-cardio":"k-movil"}" style="font-size:14px">${kLabel(ses.k)}</div>
+      <div><div class="title">${esc(ses.name)}</div><div class="tags"><span class="tag">${ses.min} min</span><span class="tag">${ses.ex.length} ejercicios</span></div></div><div></div></button>`
+      :`<div class="panel"><h3>Día de descanso</h3><p class="muted" style="margin:4px 0 0">Paseo tranquilo si te apetece. Recuperar también es entrenar.</p></div>`}
+  </section>
+  <section class="section">
+    <div class="section-head"><h2>Pésate</h2><button class="link" data-go="progreso">Ver progreso</button></div>
+    ${weighForm(p)}
+  </section>`;
+}
+
+function weighForm(p){
+  const l=lastLog(p);
+  return `<form class="panel form-row" data-weigh="${p}">
+    <div class="field"><label for="w-${p}">Peso (kg)</label><input id="w-${p}" inputmode="decimal" placeholder="${l?.w??""}" required></div>
+    <div class="field"><label for="bf-${p}">% grasa</label><input id="bf-${p}" inputmode="decimal" placeholder="${l?.bf??"báscula"}"></div>
+    <button class="btn me" style="align-self:end">Guardar</button></form>`;
+}
+
+function vMenu(){
+  const p=S.person, i=S.day, d=S.week[i], m=dayMacros(p,i);
+  const monday = new Date(TODAY); monday.setDate(TODAY.getDate()-TODAY_IDX);
+  return `
+  <section class="stack" style="margin-top:6px">
+    <div><div class="eyebrow">Menú semanal</div><h1>${DAY_NAMES[i]}</h1></div>
+    <div class="days" role="group" aria-label="Día">${DAY_SHORT.map((n,k)=>{const dt=new Date(monday); dt.setDate(monday.getDate()+k);
+      return `<button class="day ${k===TODAY_IDX?"today":""}" data-day-pick="${k}" aria-pressed="${k===i}"><span>${n}</span><b class="num">${dt.getDate()}</b></button>`}).join("")}</div>
+    <form class="ai" id="ai-form"><input id="ai-q" placeholder="Pídeselo a la IA: «algo más ligero el jueves»" aria-label="Petición a la IA"><button class="btn sm">Pedir</button></form>
+  </section>
+  <section class="section">
+    <div class="section-head"><h2>Raciones de ${esc(S.profiles[p].name)}</h2><span class="muted num">${fmt(r0(m.kcal))} kcal · ${r0(m.p)} g prot.</span></div>
+    ${["des","com","cen","sna"].map(s=>mealRow(d[s],i,s)).join("")}
+  </section>`;
+}
+
+function shopList(){
+  const map={};
+  S.week.forEach((d,i)=>{
+    const f = factor("carlos",i)+factor("sofia",i);
+    Object.values(d).forEach(id=>DISHES[id].ing.forEach(([n,q,u,sec])=>{
+      const k=n+"|"+u; if(!map[k]) map[k]={n,u,sec,q:0}; map[k].q += (u==="pizca"?0:q*f);
+    }));
+  });
+  const groups={};
+  Object.values(map).forEach(it=>{
+    let qty;
+    if(it.u==="pizca") qty="al gusto";
+    else if(it.u==="ud") qty=Math.ceil(it.q)+" ud";
+    else if(it.q>=1000) qty=(Math.ceil(it.q/100)/10).toLocaleString("es-ES")+(it.u==="ml"?" L":" kg");
+    else qty=Math.ceil(it.q/10)*10+" "+it.u;
+    (groups[it.sec] ||= []).push({n:it.n,qty});
+  });
+  if(S.extras.length) groups["Añadido a mano"]=S.extras.map(n=>({n,qty:""}));
+  return groups;
+}
+function vCompra(){
+  const g=shopList(); const order=["Frutería","Carne y pescado","Lácteos y huevos","Panadería","Despensa","Añadido a mano"];
+  const all=Object.values(g).flat(); const done=all.filter(it=>S.shop[it.n]).length;
+  return `
+  <section class="stack" style="margin-top:6px">
+    <div><div class="eyebrow">Semana del menú · para los dos</div><h1>Lista de la compra</h1></div>
+    <div class="row" style="justify-content:space-between"><span class="muted num">${done} de ${all.length} en el carro</span>
+      <div class="row"><button class="btn ghost sm" id="copy-list">Copiar</button><button class="btn ghost sm" id="reset-list">Desmarcar todo</button></div></div>
+    <div class="progress"><i style="width:${all.length?done/all.length*100:0}%"></i></div>
+    <form class="add" id="add-form"><input id="add-q" placeholder="Añadir algo (papel de cocina…)" aria-label="Añadir producto"><button class="btn sm">Añadir</button></form>
+  </section>
+  <section class="section">
+  ${order.filter(k=>g[k]).map(k=>`<div class="shop-group"><h3>${k}</h3>
+    ${g[k].sort((a,b)=>a.n.localeCompare(b.n,"es")).map(it=>{const id="i-"+btoa(unescape(encodeURIComponent(it.n))).replace(/[^a-z0-9]/gi,"");
+      return `<div class="item ${S.shop[it.n]?"done":""}"><input type="checkbox" id="${id}" data-item="${esc(it.n)}" ${S.shop[it.n]?"checked":""}>
+      <label for="${id}"><span>${esc(it.n)}</span><span class="muted num">${it.qty}</span></label></div>`}).join("")}</div>`).join("")}
+  </section>`;
+}
+
+function vEntreno(){
+  const p=S.person, pr=S.profiles[p];
+  const alert = p==="carlos"
+    ? `<div class="alert"><b>Fascitis plantar.</b> Nada de saltos por ahora. El paso a correr empieza cuando lleves 4 semanas caminando sin dolor de más de 3/10 al día siguiente: primero 1 min trotando + 4 min andando.</div>`
+    : `<div class="alert"><b>Colitis.</b> Intensidad moderada: el movimiento regular ayuda al tránsito. En brote, cambia la sesión por caminata suave y respiración.</div>`;
+  return `
+  <section class="stack" style="margin-top:6px">
+    <div><div class="eyebrow">${pr.days.length} días activos · en casa</div><h1>Entreno de ${esc(pr.name)}</h1></div>
+    ${alert}
+    <p class="muted" style="margin:0">Material: mancuernas (juego de 20 kg), bandas, esterilla y zapatillas. Cambia los días en tu perfil.</p>
+  </section>
+  <section class="section wk">
+    ${DAY_NAMES.map((dn,i)=>{const s=sessionForDay(p,i); const open=i===S.openDay;
+      if(!s) return `<div class="session"><button disabled style="cursor:default"><div class="dchip k-rest">${DAY_SHORT[i]}</div><div><h3>Descanso</h3><div class="meta">Paseo libre y estiramientos</div></div><span></span></button></div>`;
+      const kids=s.ex.map((e,j)=>{const key=`${p}-${i}-${j}`; const x=EX[e];
+        return `<div class="exi"><input type="checkbox" id="ex-${key}" data-ex="${key}" ${S.done[key]?"checked":""} aria-label="Hecho: ${esc(x[0])}"><div><b>${esc(x[0])}</b><p>${esc(x[2])}</p></div><span class="dose">${x[1]}</span></div>`}).join("");
+      const nd=s.ex.filter((e,j)=>S.done[`${p}-${i}-${j}`]).length;
+      return `<div class="session ${i===TODAY_IDX?"today":""}"><button data-open="${i}" aria-expanded="${open}">
+        <div class="dchip k-${s.k}">${DAY_SHORT[i]}<br>${kLabel(s.k)}</div>
+        <div><h3>${esc(s.name)}</h3><div class="meta num">${s.min} min · ${nd}/${s.ex.length} hechos</div></div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transform:rotate(${open?180:0}deg)"><path d="M6 9l6 6 6-6"/></svg></button>
+        ${open?`<div class="ex">${kids}<button class="btn ghost sm" data-swap-ex style="align-self:flex-start">Cambiar ejercicios con IA</button></div>`:""}</div>`;
+    }).join("")}
+  </section>`;
+}
+
+function chart(p){
+  const L=S.logs.filter(l=>l.p===p).sort((a,b)=>a.d<b.d?-1:1);
+  const W=320,H=150,pl=34,pr=12,pt=12,pb=24;
+  const ws=L.map(l=>l.w); let mn=Math.min(...ws)-1, mx=Math.max(...ws)+1;
+  mn=Math.floor(mn); mx=Math.ceil(mx); if(mx-mn<4){mx=mn+4;}
+  const x=k=> L.length<2? (pl+(W-pl-pr)/2) : pl+k*(W-pl-pr)/(L.length-1);
+  const y=v=> pt+(mx-v)*(H-pt-pb)/(mx-mn);
+  const col = p==="carlos"?"var(--carlos)":"var(--sofia)";
+  const ticks=[mn,(mn+mx)/2,mx];
+  const pts=L.map((l,k)=>`${x(k)},${y(l.w)}`).join(" ");
+  const area = L.length>1?`<polygon points="${x(0)},${H-pb} ${pts} ${x(L.length-1)},${H-pb}" fill="${col}" opacity=".12"/>`:"";
+  const fmtD=d=>new Date(d+"T12:00").toLocaleDateString("es-ES",{day:"numeric",month:"short"});
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución del peso">
+    ${ticks.map(t=>`<line x1="${pl}" x2="${W-pr}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-dasharray="3 4"/><text x="${pl-6}" y="${y(t)+3}" text-anchor="end">${t.toLocaleString("es-ES")}</text>`).join("")}
+    ${area}<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${L.map((l,k)=>`<circle cx="${x(k)}" cy="${y(l.w)}" r="${k===L.length-1?5:3}" fill="${k===L.length-1?col:"var(--surface)"}" stroke="${col}" stroke-width="2"/>`).join("")}
+    <text x="${x(0)}" y="${H-6}" text-anchor="${L.length<2?"middle":"start"}">${fmtD(L[0].d)}</text>
+    ${L.length>1?`<text x="${x(L.length-1)}" y="${H-6}" text-anchor="end">${fmtD(L.at(-1).d)}</text>`:""}
+  </svg></div>`;
+}
+function personPanel(p){
+  const pr=S.profiles[p], L=S.logs.filter(l=>l.p===p).sort((a,b)=>a.d<b.d?-1:1), first=L[0], last=L.at(-1), e=energy(p);
+  const diff = last.w-first.w; const bf=[...L].reverse().find(l=>l.bf!=null)?.bf;
+  return `<div class="panel person">
+    <div class="person-head"><div class="pname"><i style="background:var(--${p})"></i>${esc(pr.name)}</div><span class="muted" style="font-size:13px">${esc(pr.goal)}</span></div>
+    <div class="kpis">
+      <div class="kpi"><b class="num">${last.w.toLocaleString("es-ES")}</b><span>kg actuales</span></div>
+      <div class="kpi"><b class="num">${diff>0?"+":""}${diff.toLocaleString("es-ES",{maximumFractionDigits:1})}</b><span>kg desde el inicio</span></div>
+      <div class="kpi"><b class="num">${bf!=null?bf.toLocaleString("es-ES")+" %":"—"}</b><span>grasa corporal</span></div>
+    </div>
+    ${chart(p)}
+    ${L.length<2?`<p class="muted" style="margin:0;font-size:13px">Primer registro el ${new Date(first.d+"T12:00").toLocaleDateString("es-ES",{day:"numeric",month:"long"})}. La línea aparece con la segunda pesada.</p>`:""}
+    ${e?`<div class="calc"><span>IMC</span><span>${e.bmi.toFixed(1).replace(".",",")}</span><span>Metabolismo basal (Mifflin-St Jeor)</span><span>${fmt(e.bmr)} kcal</span><span>Gasto diario estimado</span><span>${fmt(e.tdee)} kcal</span><span>Objetivo diario</span><span>${fmt(e.target)} kcal</span><span>Proteína diaria</span><span>${e.protein} g</span></div>`
+      :`<div class="alert"><b>Faltan edad y altura.</b> Añádelas en el perfil y se calculan sus calorías. Mientras, se usan 1.800 kcal.</div>`}
+    ${digBlock(p)}
+    ${weighForm(p)}
+  </div>`;
+}
+function digBlock(p){
+  const g=digest(p);
+  if(!g) return `<div class="dig"><h3>Diario digestivo</h3><p class="muted" style="margin:0;font-size:13px">Sin registros todavía. Se apunta desde cada plato.</p></div>`;
+  const li=o=>`<li><span>${esc(o.name)}</span><span class="tag ${lvl(o.avg)} num">${o.avg.toFixed(1).replace(".",",")}/10 · ${o.n}×</span></li>`;
+  return `<div class="dig"><h3>Diario digestivo</h3>
+    <div class="kpis"><div class="kpi"><b class="num">${g.n}</b><span>registros</span></div>
+      <div class="kpi"><b class="num">${g.wkAvg==null?"—":g.wkAvg.toFixed(1).replace(".",",")}</b><span>malestar medio 7 días</span></div>
+      <div class="kpi"><b style="font-size:14px">${g.top.length?esc(g.top[0][0]):"—"}</b><span>síntoma más repetido</span></div></div>
+    ${g.bad.length?`<h3 style="font-size:14px">A vigilar</h3><ul>${g.bad.map(li).join("")}</ul>`:""}
+    ${g.good.length?`<h3 style="font-size:14px">Le sientan bien</h3><ul>${g.good.map(li).join("")}</ul>`:""}
+    <p class="muted" style="margin:0;font-size:12px">Con 3 registros o más de un plato, la IA lo tendrá en cuenta al hacer el menú (fase 3).</p></div>`;
+}
+function vProgreso(){
+  return `<section class="stack" style="margin-top:6px"><div><div class="eyebrow">Seguimiento compartido</div><h1>Progreso</h1></div></section>
+  <section class="section">${personPanel("carlos")}${personPanel("sofia")}</section>`;
+}
+
+function vPerfil(){
+  const p=S.person, pr=S.profiles[p];
+  return `<section class="stack" style="margin-top:6px"><div><div class="eyebrow">Perfil</div><h1>${esc(pr.name)}</h1></div></section>
+  <section class="section panel stack">
+    <div class="field"><label for="pf-goal">Objetivo</label><input id="pf-goal" value="${esc(pr.goal)}"></div>
+    <div class="grid2">
+      <div class="field"><label for="pf-birth">Nacimiento</label><input id="pf-birth" type="date" value="${pr.birth??""}"></div>
+      <div class="field"><label for="pf-age">Edad</label><input id="pf-age" inputmode="numeric" value="${ageOf(pr)??""}" placeholder="años" ${pr.birth?"readonly":""}></div>
+      <div class="field"><label for="pf-h">Altura (cm)</label><input id="pf-h" inputmode="numeric" value="${pr.height??""}" placeholder="cm"></div>
+      <div class="field"><label for="pf-act">Actividad</label><select id="pf-act">
+        ${[[1.2,"Sedentaria"],[1.4,"Sedentaria-moderada"],[1.55,"Moderada"],[1.725,"Alta"]].map(([v,t])=>`<option value="${v}" ${pr.activity==v?"selected":""}>${t}</option>`).join("")}</select></div>
+      <div class="field"><label for="pf-pace">Ritmo de pérdida</label><select id="pf-pace">
+        ${[[0,"Mantener"],[0.25,"0,25 kg/sem"],[0.5,"0,5 kg/sem"],[0.75,"0,75 kg/sem"]].map(([v,t])=>`<option value="${v}" ${pr.pace==v?"selected":""}>${t}</option>`).join("")}</select></div>
+    </div>
+    <div class="field"><label>Días de entreno</label><div class="chips">${DAY_SHORT.map((d,i)=>`<button class="chip" data-dayt="${i}" aria-pressed="${pr.days.includes(i)}">${d}</button>`).join("")}</div></div>
+  </section>
+  <section class="section panel stack">
+    <h3>Salud a tener en cuenta</h3><div class="chips">${pr.health.map(h=>`<span class="chip x">${esc(h)}</span>`).join("")}</div>
+    <h3>No nos gusta</h3><div class="chips">${pr.restrictions.map(h=>`<span class="chip x">${esc(h)}</span>`).join("")}</div>
+    <p class="muted" style="margin:0;font-size:13px">Todo esto se envía a la IA como contexto cada vez que genera un menú o un entreno.</p>
+  </section>
+  <div class="row" style="margin-top:16px"><button class="btn me" id="pf-save">Guardar perfil</button><button class="btn ghost" id="pf-reset">Volver a los datos de ejemplo</button>${CLOUD_ENABLED&&ME?`<button class="btn ghost" id="logout">Cerrar sesión (${esc(ME.email)})</button>`:""}</div>`;
+}
+
+// ---------- Sheet (detalle de plato) ----------
+function openDish(id,i,slot){
+  const x=DISHES[id], fc=factor("carlos",i), fs=factor("sofia",i);
+  const tot=x.p*4+x.c*4+x.g*9;
+  const seg=(v,c)=>`<i style="width:${v/tot*100}%;background:${c}"></i>`;
+  $("#sheet-root").innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(x.name)}">
+    <div class="grab"></div>
+    <div class="sheet-head"><div><div class="eyebrow">${SLOTS[slot]} · ${DAY_NAMES[i]}</div><h2 style="margin-top:4px">${esc(x.name)}</h2>
+      <div class="tags"><span class="tag">${esc(x.tool)}</span><span class="tag">${esc(x.time)}</span><span class="tag ok">Sin ingredientes vetados</span></div></div>
+      <button class="icon-btn" data-close aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="stack" style="margin-top:14px">
+      <div class="split"><div class="who-kcal c"><b class="num">${fmt(r0(x.kcal*fc))} kcal</b><span>Ración Carlos (×${fc.toFixed(2).replace(".",",")})</span></div>
+        <div class="who-kcal s"><b class="num">${fmt(r0(x.kcal*fs))} kcal</b><span>Ración Sofía (×${fs.toFixed(2).replace(".",",")})</span></div></div>
+      <div class="bar">${seg(x.p*4,"var(--carlos)")}${seg(x.c*4,"var(--sun)")}${seg(x.g*9,"var(--sofia)")}</div>
+      <div class="legend"><span><i style="background:var(--carlos)"></i>Proteína ${x.p} g</span><span><i style="background:var(--sun)"></i>Hidratos ${x.c} g</span><span><i style="background:var(--sofia)"></i>Grasa ${x.g} g</span><span>Fibra ${x.f} g</span></div>
+      <p class="muted" style="margin:0;font-size:12px">Valores por ración estándar, estimados. En la fase 3 se calcularán con la base de datos BEDCA.</p>
+      <div class="note"><h3>Por qué os conviene</h3><p>${esc(x.why)}</p></div>
+      <div class="note"><h3>Microbioma</h3><p>${esc(x.micro)}</p></div>
+      <div class="note" style="background:var(--sofia-soft)"><h3>Para Sofía</h3><p>${esc(x.sofia)}</p></div>
+      <div><h3 style="margin-bottom:6px">Ingredientes · ración estándar</h3><ul class="ing">${x.ing.map(([n,q,u])=>`<li><span>${esc(n)}</span><span class="muted num">${u==="pizca"?"al gusto":(q.toLocaleString("es-ES")+" "+u)}</span></li>`).join("")}</ul></div>
+      <div><h3 style="margin-bottom:6px">Paso a paso</h3><ol class="steps">${x.steps.map(s=>`<li>${esc(s)}</li>`).join("")}</ol></div>
+      ${symBlock(id,i,slot)}
+      <div class="row"><button class="btn me" data-swap="${id}" data-day="${i}" data-slot="${slot}">Cambiar este plato</button></div>
+    </div></div></div>`;
+}
+function closeSheet(){ $("#sheet-root").innerHTML=""; }
+
+// ---------- Nube (Supabase) ----------
+const CLOUD_ENABLED = true; // en index.html se activa automáticamente
+const SUPA_URL = "https://jlkjvopynizxpvaxwdqr.supabase.co";
+const SUPA_KEY = "sb_publishable_r90i4SuHTzwdnfrcdOOM2Q_Vqjc-Z4J"; // clave pública: la seguridad la ponen las reglas RLS
+const SHARED_KEYS = ["week","shop","extras","done","profiles"];
+let sb=null, ME=null; const timers={};
+function pushKey(k,now){
+  if(!sb||!ME) return; clearTimeout(timers[k]);
+  const run=()=>sb.from("estado").upsert({clave:k,valor:S[k],actualizado:new Date().toISOString(),actualizado_por:ME.persona})
+    .then(({error})=>{ if(error) toast("No se pudo guardar en la nube: "+error.message); });
+  if(now) run(); else timers[k]=setTimeout(run,400);
+}
+function cloudLog(r){ if(!sb||!ME) return;
+  sb.from("mediciones").upsert({persona:r.p,fecha:r.d,peso:r.w,grasa:r.bf},{onConflict:"persona,fecha"})
+    .then(({error})=>{ if(error) toast("No se pudo guardar la pesada: "+error.message); }); }
+function cloudSym(r){ if(!sb||!ME) return;
+  sb.from("sintomas").upsert({persona:r.p,fecha:r.d,franja:r.slot,plato_id:r.dish,plato_nombre:r.name,malestar:r.score,sintomas:r.sy,nota:r.note||null},{onConflict:"persona,fecha,franja"})
+    .then(({error})=>{ if(error) toast("No se pudo guardar el registro: "+error.message); }); }
+async function pullLogs(){ const {data}=await sb.from("mediciones").select("persona,fecha,peso,grasa");
+  if(data) S.logs=data.map(r=>({p:r.persona,d:r.fecha,w:+r.peso,bf:r.grasa==null?null:+r.grasa})); }
+async function pullSym(){ const {data}=await sb.from("sintomas").select("persona,fecha,franja,plato_id,plato_nombre,malestar,sintomas,nota");
+  if(data) S.symptoms=data.map(r=>({p:r.persona,d:r.fecha,slot:r.franja,dish:r.plato_id,name:r.plato_nombre,score:r.malestar,sy:r.sintomas||[],note:r.nota||""})); }
+async function pullAll(){
+  const {data,error}=await sb.from("estado").select("clave,valor");
+  if(error){ toast("Sin conexión: usando los datos guardados en el móvil."); return; }
+  const got={}; data.forEach(r=>got[r.clave]=r.valor);
+  SHARED_KEYS.forEach(k=>{ if(k in got) S[k]=got[k]; else pushKey(k,true); });
+  await Promise.all([pullLogs(),pullSym()]);
+}
+function softRender(){
+  const a=document.activeElement;
+  if(a && ["INPUT","TEXTAREA","SELECT"].includes(a.tagName) && a.type!=="checkbox"){ softRender.pending=true; return; }
+  if($("#sheet-root").innerHTML) { softRender.pending=true; return; }
+  render();
+}
+document.addEventListener("focusout",()=>{ if(softRender.pending){ softRender.pending=false; setTimeout(softRender,50); } });
+function subscribe(){
+  sb.channel("carsofit")
+    .on("postgres_changes",{event:"*",schema:"public",table:"estado"},pl=>{
+      const r=pl.new; if(!r?.clave || r.actualizado_por===ME.persona) return; S[r.clave]=r.valor; softRender(); })
+    .on("postgres_changes",{event:"*",schema:"public",table:"mediciones"},()=>pullLogs().then(softRender))
+    .on("postgres_changes",{event:"*",schema:"public",table:"sintomas"},()=>pullSym().then(softRender))
+    .subscribe();
+}
+function showLogin(msg){
+  let el=$("#login"); if(!el){ el=document.createElement("div"); el.id="login"; el.className="login"; document.body.appendChild(el); }
+  el.innerHTML=`<form id="login-form"><div class="logo"><span class="c">Car</span><span class="s">Sofi</span><span class="f">t</span></div>
+    <p class="muted" style="margin:0">Entrad cada uno con vuestro correo. Todo lo que apuntéis lo veréis los dos.</p>
+    <div class="field"><label for="lg-email">Correo</label><input id="lg-email" type="email" autocomplete="email" required></div>
+    <div class="field"><label for="lg-pass">Contraseña</label><input id="lg-pass" type="password" autocomplete="current-password" minlength="6" required></div>
+    <p class="msg" id="lg-msg">${msg?esc(msg):""}</p>
+    <button class="btn" data-mode="in">Entrar</button>
+    <button class="btn ghost" data-mode="up" type="button" id="lg-up">Es mi primera vez: crear cuenta</button></form>`;
+}
+async function doLogin(mode){
+  const email=$("#lg-email").value.trim().toLowerCase(), password=$("#lg-pass").value, m=$("#lg-msg");
+  if(!email||password.length<6){ m.textContent="Escribe tu correo y una contraseña de 6 caracteres o más."; return; }
+  m.style.color="var(--muted)"; m.textContent=mode==="up"?"Creando cuenta…":"Entrando…";
+  if(mode==="up"){ const {error}=await sb.auth.signUp({email,password});
+    if(error){ m.style.color=""; m.textContent=error.message.includes("registered")?"Ese correo ya tiene cuenta: pulsa Entrar.":error.message; return; } }
+  const {data,error}=await sb.auth.signInWithPassword({email,password});
+  if(error){ m.style.color=""; m.textContent= error.message.includes("confirmed") ? "Ese correo no está autorizado todavía. Pide a Carlos que lo añada." : "Correo o contraseña incorrectos."; return; }
+  await afterLogin(data.session);
+}
+async function afterLogin(session){
+  const email=session.user.email.toLowerCase();
+  const {data:mem}=await sb.from("miembros").select("email,persona");
+  const me=(mem||[]).find(x=>x.email===email);
+  if(!me){ await sb.auth.signOut(); showLogin("Este correo no está autorizado en CarSofit."); return; }
+  ME=me; if(!S.personChosen) S.person=me.persona;
+  await pullAll(); subscribe(); $("#login")?.remove(); render();
+}
+async function cloudBoot(){
+  if(!window.supabase){ render(); toast("Sin conexión: usando los datos guardados en el móvil."); return; }
+  sb=window.supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+  const {data:{session}}=await sb.auth.getSession();
+  render();
+  if(session) await afterLogin(session); else showLogin();
+}
+document.addEventListener("submit",e=>{ if(e.target.id==="login-form"){ e.preventDefault(); e.stopImmediatePropagation(); doLogin("in"); } }, true);
+document.addEventListener("click",e=>{
+  if(e.target.closest("#lg-up")){ doLogin("up"); }
+  if(e.target.closest("#logout")){ sb.auth.signOut().then(()=>location.reload()); }
+});
+
+// ---------- Render ----------
+const VIEWS={hoy:vHoy,menu:vMenu,compra:vCompra,entreno:vEntreno,progreso:vProgreso,perfil:vPerfil};
+function render(){
+  document.body.classList.toggle("is-sofia",S.person==="sofia");
+  document.querySelectorAll(".who button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.p===S.person));
+  document.querySelectorAll(".nav button").forEach(b=>{ if(b.dataset.v===S.view) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
+  $("#view").innerHTML=VIEWS[S.view]();
+  save();
+}
+function go(v){ S.view=v; window.scrollTo({top:0}); render(); }
+
+// ---------- Eventos ----------
+document.addEventListener("click",e=>{
+  const t=e.target;
+  const who=t.closest(".who button"); if(who){ S.person=who.dataset.p; S.personChosen=true; render(); return; }
+  const nav=t.closest(".nav button"); if(nav){ go(nav.dataset.v); return; }
+  if(t.closest("#btn-perfil")){ go("perfil"); return; }
+  const g=t.closest("[data-go]"); if(g){ go(g.dataset.go); return; }
+  if(t.closest("[data-close]") && (t.matches("[data-close]")||t.closest(".icon-btn[data-close]"))){ closeSheet(); return; }
+  const sc=t.closest("[data-score]"); if(sc&&DRAFT){ DRAFT.score=+sc.dataset.score; document.querySelectorAll("[data-score]").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.score===DRAFT.score)); return; }
+  const sy=t.closest("[data-sy]"); if(sy&&DRAFT){ const k=sy.dataset.sy; DRAFT.sy=DRAFT.sy.includes(k)?DRAFT.sy.filter(x=>x!==k):[...DRAFT.sy,k]; sy.setAttribute("aria-pressed",DRAFT.sy.includes(k)); return; }
+  if(t.closest("#sym-save")&&DRAFT){
+    if(DRAFT.score==null){ toast("Elige un número del 0 al 10."); return; }
+    DRAFT.note=$("#sym-note").value.trim();
+    const rec={...DRAFT}; S.symptoms=S.symptoms.filter(x=>!(x.p===rec.p&&x.d===rec.d&&x.slot===rec.slot)); S.symptoms.push(rec);
+    cloudSym(rec); closeSheet(); render(); toast(`Apuntado: ${rec.score}/10 tras «${rec.name}».`); return; }
+  const sw=t.closest("[data-swap]"); if(sw){
+    const {day,slot}=sw.dataset; const cur=S.week[day][slot];
+    const pool=Object.keys(DISHES).filter(k=>DISHES[k].slot===slot && k!==cur);
+    S.week[day][slot]=pool[Math.floor(Math.random()*pool.length)];
+    pushKey("week"); closeSheet(); render(); toast("Plato cambiado. En la fase 3 lo elegirá la IA según lo que le pidas."); return; }
+  const m=t.closest(".meal[data-dish]"); if(m){ openDish(m.dataset.dish,+m.dataset.day,m.dataset.slot); return; }
+  const dp=t.closest("[data-day-pick]"); if(dp){ S.day=+dp.dataset.dayPick; render(); return; }
+  const op=t.closest("[data-open]"); if(op){ const i=+op.dataset.open; S.openDay = S.openDay===i?null:i; render(); return; }
+  if(t.closest("[data-swap-ex]")){ toast("En la fase 3: «me molesta el pie» o «solo tengo 20 min» y la IA rehace la sesión."); return; }
+  const dt=t.closest("[data-dayt]"); if(dt){ const pr=S.profiles[S.person]; const i=+dt.dataset.dayt;
+    pr.days = pr.days.includes(i)? pr.days.filter(x=>x!==i) : [...pr.days,i]; pushKey("profiles"); render(); return; }
+  if(t.closest("#reset-list")){ S.shop={}; pushKey("shop"); render(); return; }
+  if(t.closest("#copy-list")){
+    const g=shopList(); const txt=Object.entries(g).map(([k,v])=>k.toUpperCase()+"\n"+v.filter(it=>!S.shop[it.n]).map(it=>`☐ ${it.n}${it.qty?" · "+it.qty:""}`).join("\n")).join("\n\n");
+    navigator.clipboard?.writeText(txt).then(()=>toast("Lista copiada: pégala en Keep o WhatsApp."),()=>toast("No se pudo copiar en este navegador."));
+    return; }
+  if(t.closest("#pf-save")){ const pr=S.profiles[S.person];
+    pr.goal=$("#pf-goal").value.trim()||pr.goal;
+    const a=parseInt($("#pf-age").value), h=parseInt($("#pf-h").value), bd=$("#pf-birth").value;
+    pr.birth=bd||null; pr.age=bd?ageOf({birth:bd}):(isNaN(a)?null:a); pr.height=isNaN(h)?null:h;
+    pr.activity=parseFloat($("#pf-act").value); pr.pace=parseFloat($("#pf-pace").value);
+    pushKey("profiles"); render(); toast("Perfil guardado. Calorías y raciones recalculadas."); return; }
+  if(t.closest("#pf-reset")){ const b=t.closest("#pf-reset");
+    if(b.dataset.armed){ const D=JSON.parse(JSON.stringify(DEFAULT_STATE)); SHARED_KEYS.forEach(k=>{S[k]=D[k]; pushKey(k,true);}); render(); toast("Menú, lista, entrenos y perfiles restaurados. Pesadas y síntomas se conservan."); }
+    else { b.dataset.armed="1"; b.textContent="Pulsa otra vez para confirmar"; }
+    return; }
+});
+document.addEventListener("change",e=>{
+  const t=e.target;
+  if(t.dataset.item!==undefined){ S.shop[t.dataset.item]=t.checked; pushKey("shop"); render(); }
+  if(t.dataset.ex){ S.done[t.dataset.ex]=t.checked; pushKey("done"); render(); }
+});
+document.addEventListener("submit",e=>{
+  e.preventDefault(); const f=e.target;
+  if(f.dataset.weigh){ const p=f.dataset.weigh;
+    const w=parseFloat(f.querySelector(`#w-${p}`).value.replace(",",".")); const bfv=f.querySelector(`#bf-${p}`).value.replace(",",".");
+    if(isNaN(w)||w<30||w>250){ toast("Escribe un peso válido en kg, por ejemplo 90,4."); return; }
+    const bf = bfv===""?null:parseFloat(bfv);
+    S.logs = S.logs.filter(l=>!(l.p===p && l.d===TODAY_ISO));
+    const rec={p,d:TODAY_ISO,w,bf:(bf==null||isNaN(bf))?null:bf}; S.logs.push(rec); cloudLog(rec);
+    render(); toast(`Guardado: ${w.toLocaleString("es-ES")} kg para ${S.profiles[p].name}.`); }
+  if(f.id==="add-form"){ const v=$("#add-q").value.trim(); if(v){ S.extras.push(v); pushKey("extras"); render(); } }
+  if(f.id==="ai-form"){ const v=$("#ai-q").value.trim(); toast(v?`En la fase 3 Gemini recibirá: «${v}» + vuestros perfiles.`:"Escribe qué quieres cambiar."); }
+});
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeSheet(); });
+
+if(CLOUD_ENABLED) cloudBoot(); else render();
+</script>
+
+<script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("sw.js"));}</script>
+</body>
+</html>
