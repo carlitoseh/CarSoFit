@@ -230,6 +230,8 @@ function rigHuman(gltf, who) {
     const mn = o.material?.name || "";
     if (/Headwear/.test(mn)) { o.visible = false; return; }
     const c = Object.entries(sport).find(([k]) => mn.includes(k));
+    // Piel oliva clara (tono típico de Andalucía)
+    if (/Wolf3D_(Skin|Body)/.test(mn)) o.material.color.setRGB(0.97, 0.86, 0.74);
     if (c) { o.material.map = null; o.material.color.setHex(c[1]); o.material.roughness = 0.85; o.material.metalness = 0; o.material.needsUpdate = true; }
     o.castShadow = true; o.frustumCulled = false; if (o.isSkinnedMesh) meshes.push(o);
   });
@@ -317,7 +319,7 @@ function headGeom(root, B, mesh, strip) {
         const x = P[i * 3] - C.x, y = P[i * 3 + 1], z = P[i * 3 + 2];
         if (Math.abs(x) > 0.085 || y < N.y - 0.01 || y > N.y + 0.075 || z < N.z - 0.05) continue;
         const u = clamp(Math.floor(uv.getX(i) * cv.width), 0, cv.width - 1), v = clamp(Math.floor(uv.getY(i) * cv.height), 0, cv.height - 1), k = (v * cv.width + u) * 4;
-        if (px[k] > 110 && px[k] - px[k + 1] > 40 && px[k] - px[k + 2] > 55) out[i] = 1;
+        if (px[k] > 110 && px[k] - px[k + 1] > 60 && px[k] - px[k + 2] > 70) out[i] = 1;
       }
     }
     const keep = [];
