@@ -48,7 +48,8 @@ Juego de mancuernas de 20 kg, bandas, esterilla, zapatillas. Nada de gimnasio. 4
 ## Supabase (proyecto `carsofit`, ref jlkjvopynizxpvaxwdqr, región eu-west-3)
 - `miembros` (email, persona): lista de correos autorizados. Solo ellos leen y escriben (RLS con `privado.es_miembro()`).
   Al registrarse, un correo de la lista queda confirmado automáticamente (trigger `privado.autoconfirmar_miembro`).
-- `estado` (clave, valor jsonb): claves week, shop, extras, done, profiles, dishes, sessions, eaten, prefs, plan, weekStart.
+- `estado` (clave, valor jsonb): claves week, shop, extras, done, profiles, dishes, sessions, eaten, prefs, plan, weekStart, favs.
+  `favs` = recetas favoritas compartidas {id: plato completo + favAt, by, mine}. Se guardan con ❤️ desde cualquier plato o a mano (acción de IA `receta` la completa sin cambiarla). Al ponerlas en el menú se copian a `dishes` con id nuevo.
   `prefs` = {tupper, tupperDays}. `plan` = semanas distintas de la actual por lunes (AAAA-MM-DD) → {days, dishes} (o {gen} mientras la IA la prepara). `weekStart` = lunes de la semana actual: al empezar una semana nueva, la app archiva la anterior en plan y pone como actual la preparada (rollWeek). Desde el jueves se prepara sola la semana siguiente (autoNextWeek). Compartido y en tiempo real.
   `eaten` = comidas fuera de plan por persona: clave "persona|AAAA-MM-DD|franja" → {name, kcal, p, c, g, f, nota, desc, plan}.
 - `mediciones` (persona, fecha, peso, grasa) · única por persona y día.
@@ -69,4 +70,5 @@ Juego de mancuernas de 20 kg, bandas, esterilla, zapatillas. Nada de gimnasio. 4
 8. [x] Personas 3D realistas (hombre/mujer según quien use la app), sesión de pilates de Sofía detallada (10 ejercicios con animación), paso a paso de cada ejercicio y registro de pesos con comparativa.
 9. [x] Personas 3D a medida: Carlos 1,83 m con rizos y degradado (casquetes y rizos generados en código) y media barba (capa con transparencia por vértice sobre la cara); Sofía 1,60 m sin el pelo afro ni auriculares del modelo original (se quitan triángulos), con coleta, gafas y ojos (el modelo traía gafas de sol). Los dos con rasgos europeos y piel oliva clara, tono típico de Andalucía (Carlos: tinte en los materiales Wolf3D_Skin/Body; Sofía: piel recoloreada en la textura de modelos/sofia.glb).
 10. [x] Modo tupper (Menú → «Comidas para llevar»): la IA crea las comidas de los días elegidos con prep, nevera y recalentar. Calendario mensual (Menú → Mes) con el menú de cada día y generación automática de la semana siguiente.
-11. [x] Publicada en GitHub Pages: https://carlitoseh.github.io/CarSoFit/CarSofit/ (repo carlitoseh/CarSoFit, archivos dentro de la subcarpeta CarSofit/).
+11. [x] Recetas favoritas (Menú → ❤️ Favoritas): guardar desde un plato, añadir a mano, ponerlas en un día y desplegable «Por una receta favorita» en la ficha de cada plato.
+12. [x] Publicada en GitHub Pages: https://carlitoseh.github.io/CarSoFit/CarSofit/ (repo carlitoseh/CarSoFit, archivos dentro de la subcarpeta CarSofit/).

@@ -243,6 +243,10 @@ h3{font-size:16px;font-weight:700}
 .dlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .dlist li{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;background:var(--surface);border-radius:14px;padding:10px 12px}
 .dlist .emo{font-size:24px;text-align:center}
+.favrow{display:flex;gap:8px;align-items:center}
+.favrow select{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 12px}
+.field textarea{min-height:90px;resize:vertical;font:inherit}
+.btn.fav{background:var(--sofia-soft);color:var(--sofia)}
 .demo{font-size:12px;color:var(--muted);text-align:center;margin-top:18px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:380px){ .form-row{grid-template-columns:1fr 1fr} .form-row .btn{grid-column:1/-1} .who button{padding:6px 9px} }
@@ -588,7 +592,7 @@ function loadBox(p,e,i){
   </div>`;
 }
 
-function planDish(id){ for(const w of Object.values(S.plan||{})) if(w?.dishes?.[id]) return w.dishes[id]; return null; }
+function planDish(id){ if(S.favs?.[id]) return S.favs[id]; for(const w of Object.values(S.plan||{})) if(w?.dishes?.[id]) return w.dishes[id]; return null; }
 function dish(id){ return DISHES[id] || (S.dishes&&S.dishes[id]) || planDish(id) || {slot:"com",name:"Plato no disponible",kcal:0,p:0,c:0,g:0,f:0,time:"",tool:"",ing:[],steps:[],why:"",micro:"",sofia:""}; }
 
 // ---------- Estado ----------
@@ -610,7 +614,7 @@ const DEFAULT_STATE = {
   done:{},
   symptoms:[], loads:[],
   dishes:{}, sessions:{}, eaten:{},
-  prefs:{tupper:false,tupperDays:[0,1,2,3,4]}, plan:{}, weekStart:null,
+  prefs:{tupper:false,tupperDays:[0,1,2,3,4]}, plan:{}, weekStart:null, favs:{},
   profiles:{
     carlos:{name:"Carlos",sex:"h",age:28,height:183,activity:1.4,goal:"Perder grasa y tonificar",pace:0.5,
       days:[0,1,2,3,5],restrictions:["Coliflor","Judías verdes","Salmón ahumado","Berenjena al vapor o en guiso"],
@@ -629,7 +633,7 @@ let S;
 try{ S = JSON.parse(localStorage.getItem(KEY)) || null; }catch(e){ S=null; }
 if(!S) S = JSON.parse(JSON.stringify(DEFAULT_STATE));
 S.day = TODAY_IDX; S.view = S.view || "hoy"; S.symptoms = S.symptoms || []; S.dishes = S.dishes || {}; S.sessions = S.sessions || {}; S.eaten = S.eaten || {}; S.loads = S.loads || [];
-S.prefs = S.prefs || {tupper:false,tupperDays:[0,1,2,3,4]}; S.plan = S.plan || {};
+S.prefs = S.prefs || {tupper:false,tupperDays:[0,1,2,3,4]}; S.plan = S.plan || {}; S.favs = S.favs || {};
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
 
 // ---------- Cálculos ----------
@@ -715,7 +719,7 @@ function setBusy(msg){ BUSY=!!msg; let el=$("#busy"); if(!msg){ el?.remove(); re
 async function askAI(body){
   if(!CLOUD_ENABLED||!sb||!ME){ return null; }
   if(BUSY){ toast("La IA ya está trabajando, espera un momento."); return undefined; }
-  setBusy({semana:"La IA está diseñando la semana… (hasta 1 minuto)",cambios:"La IA está cambiando los platos… (hasta 1 minuto)",comido:"La IA está calculando lo que has comido…"}[body.accion]||"La IA está pensando…");
+  setBusy({semana:"La IA está diseñando la semana… (hasta 1 minuto)",cambios:"La IA está cambiando los platos… (hasta 1 minuto)",comido:"La IA está calculando lo que has comido…",receta:"La IA está completando la receta…"}[body.accion]||"La IA está pensando…");
   try{
     const {data,error}=await sb.functions.invoke("ia",{body});
     if(error){ let m=error.message; try{ m=(await error.context.json()).error||m; }catch(e){} throw new Error(m); }
@@ -812,7 +816,96 @@ function vMenu(){
   </section>
   ${tupperCard()}`;
 }
-function segNav(v){ return `<div class="seg" role="group" aria-label="Vista"><button data-go="menu" aria-pressed="${v==="menu"}">Semana</button><button data-go="mes" aria-pressed="${v==="mes"}">Mes</button></div>`; }
+function segNav(v){ return `<div class="seg" role="group" aria-label="Vista"><button data-go="menu" aria-pressed="${v==="menu"}">Semana</button><button data-go="mes" aria-pressed="${v==="mes"}">Mes</button><button data-go="favs" aria-pressed="${v==="favs"}">❤️ Favoritas</button></div>`; }
+
+// ---------- Recetas favoritas ----------
+const TOOL_LIST=["Thermomix","Freidora de aire","Olla GM","Vitrocerámica","Horno","Thermomix + sartén","Freidora + Thermomix","Thermomix (Varoma)","Sin cocción"];
+const normName=n=>String(n||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+function favIdOf(name){ const n=normName(name); return Object.keys(S.favs).find(k=>normName(S.favs[k].name)===n)||null; }
+function addFav(d){ const id=`fav_${Date.now().toString(36)}${Math.random().toString(36).slice(2,6)}`; const {ai,...rest}=d; S.favs[id]={...rest,favAt:Date.now(),by:S.person}; pushKey("favs",true); return id; }
+function favOptions(slot){
+  const all=Object.entries(S.favs).sort((a,b)=>a[1].name.localeCompare(b[1].name,"es"));
+  const same=all.filter(([,f])=>f.slot===slot), other=all.filter(([,f])=>f.slot!==slot);
+  const opt=([k,f])=>`<option value="${k}">${esc(f.name)}</option>`;
+  return (same.length?`<optgroup label="${SLOTS[slot]}">${same.map(opt).join("")}</optgroup>`:"")+(other.length?`<optgroup label="Otras favoritas">${other.map(opt).join("")}</optgroup>`:"");
+}
+// Pone una favorita en un día y franja de la semana actual (copia propia, con deshacer)
+function placeFav(favId,i,slot){
+  const f=S.favs[favId]; if(!f) return;
+  const prev={week:JSON.parse(JSON.stringify(S.week)),dishes:JSON.parse(JSON.stringify(S.dishes))};
+  const id=`ai_${Date.now().toString(36)}${Math.random().toString(36).slice(2,6)}`; const {favAt,by,mine,...d}=f;
+  S.dishes[id]={...d,slot}; S.week[i][slot]=id; pruneDishes(); pushKey("dishes",true); pushKey("week",true);
+  closeSheet(); render();
+  toast(`${DAY_NAMES[i]}, ${SLOTS[slot].toLowerCase()}: ${f.name}`,{label:"Deshacer",fn:()=>{ S.week=prev.week; S.dishes=prev.dishes; pushKey("dishes",true); pushKey("week",true); render(); toast("Cambio deshecho."); }});
+}
+function vFavs(){
+  const flt=S.favFilter||"all", list=Object.entries(S.favs).filter(([,f])=>flt==="all"||f.slot===flt).sort((a,b)=>b[1].favAt-a[1].favAt);
+  return `<section class="stack" style="margin-top:6px">
+    <div><div class="eyebrow">Recetas guardadas · de los dos</div><h1>Favoritas</h1></div>
+    ${segNav("favs")}
+    <div class="chips">${[["all","Todas"],...Object.entries(SLOTS)].map(([k,n])=>`<button class="chip" data-favflt="${k}" aria-pressed="${flt===k}">${n}</button>`).join("")}</div>
+    <div class="row"><button class="btn me sm" id="fav-new">＋ Añadir una receta vuestra</button></div>
+  </section>
+  <section class="section">
+    ${list.length?list.map(([k,f])=>`<button class="meal" data-favopen="${k}"><div class="thumb emo t-${f.slot}" aria-hidden="true">${foodEmoji(f.name,f.slot)}</div>
+      <div><div class="slot">${SLOTS[f.slot]||"Plato"}</div><div class="title">${esc(f.name)}</div>
+      <div class="tags">${f.mine?'<span class="tag ok">Receta vuestra</span>':""}${f.tool?`<span class="tag">${esc(f.tool)}</span>`:""}${f.time?`<span class="tag">${esc(f.time)}</span>`:""}</div></div>
+      <div class="kcal num">${f.kcal?fmt(r0(f.kcal)):"—"}<small>kcal/ración</small></div></button>`).join("")
+      :`<div class="panel"><h3>Aún no hay favoritas</h3><p class="muted" style="margin:4px 0 0">Abre cualquier plato del menú y pulsa «🤍 Guardar en favoritas», o añade aquí una receta vuestra. Luego podréis ponerla en cualquier día desde el desplegable de cada plato.</p></div>`}
+  </section>`;
+}
+function openFav(id){
+  const f=S.favs[id]; if(!f) return;
+  $("#sheet-root").innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(f.name)}">
+    <div class="grab"></div>
+    <div class="sheet-head"><div><div class="eyebrow">❤️ Favorita · ${SLOTS[f.slot]||"Plato"}</div><h2 style="margin-top:4px">${esc(f.name)}</h2>
+      <div class="tags">${f.mine?'<span class="tag ok">Receta vuestra</span>':""}${f.tool?`<span class="tag">${esc(f.tool)}</span>`:""}${f.time?`<span class="tag">${esc(f.time)}</span>`:""}</div></div>
+      <button class="icon-btn" data-close aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="stack" style="margin-top:14px">
+      <div class="note stack"><h3>Ponerla en el menú</h3>
+        <div class="grid2"><div class="field"><label for="fp-day">Día</label><select id="fp-day">${DAY_NAMES.map((n,k)=>`<option value="${k}" ${k===S.day?"selected":""}>${n}</option>`).join("")}</select></div>
+          <div class="field"><label for="fp-slot">Comida</label><select id="fp-slot">${Object.entries(SLOTS).map(([k,n])=>`<option value="${k}" ${k===f.slot?"selected":""}>${n}</option>`).join("")}</select></div></div>
+        <div class="row"><button class="btn me sm" id="fp-place" data-fav="${id}">Poner en el menú</button></div></div>
+      ${f.kcal?`<div class="legend"><span>${fmt(r0(f.kcal))} kcal por ración estándar</span>${f.p?`<span>Proteína ${f.p} g</span><span>Hidratos ${f.c} g</span><span>Grasa ${f.g} g</span><span>Fibra ${f.f} g</span>`:""}</div>`:""}
+      ${f.why?`<div class="note"><h3>Por qué os conviene</h3><p>${esc(f.why)}</p></div>`:""}
+      ${f.sofia?`<div class="note" style="background:var(--sofia-soft)"><h3>Para Sofía</h3><p>${esc(f.sofia)}</p></div>`:""}
+      ${f.ing?.length?`<div><h3 style="margin-bottom:6px">Ingredientes · ración estándar</h3><ul class="ing">${f.ing.map(([n,q,u])=>`<li><span>${esc(n)}</span><span class="muted num">${u==="pizca"?"al gusto":(q.toLocaleString("es-ES")+" "+u)}</span></li>`).join("")}</ul></div>`:""}
+      ${f.steps?.length?`<div><h3 style="margin-bottom:6px">Paso a paso</h3><ol class="steps">${f.steps.map(t=>`<li>${esc(t)}</li>`).join("")}</ol></div>`:""}
+      <div class="row"><button class="btn ghost sm" id="fav-del" data-fav="${id}">Quitar de favoritas</button></div>
+    </div></div></div>`;
+}
+function openFavForm(){
+  $("#sheet-root").innerHTML=`<div class="scrim" data-close><div class="sheet" role="dialog" aria-modal="true" aria-label="Añadir receta">
+    <div class="grab"></div>
+    <div class="sheet-head"><div><div class="eyebrow">Favoritas</div><h2 style="margin-top:4px">Añadir una receta vuestra</h2></div>
+      <button class="icon-btn" data-close aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <form class="stack" id="favform" style="margin-top:14px">
+      <div class="field"><label for="ff-name">Nombre *</label><input id="ff-name" required placeholder="Pollo al curry de mi madre"></div>
+      <div class="grid2"><div class="field"><label for="ff-slot">Comida</label><select id="ff-slot">${Object.entries(SLOTS).map(([k,n])=>`<option value="${k}" ${k==="com"?"selected":""}>${n}</option>`).join("")}</select></div>
+        <div class="field"><label for="ff-rac">Raciones que salen</label><input id="ff-rac" inputmode="numeric" value="2"></div>
+        <div class="field"><label for="ff-time">Tiempo</label><input id="ff-time" placeholder="30 min"></div>
+        <div class="field"><label for="ff-tool">Aparato</label><select id="ff-tool"><option value="">—</option>${TOOL_LIST.map(t=>`<option>${t}</option>`).join("")}</select></div></div>
+      <div class="field"><label for="ff-ing">Ingredientes (uno por línea, para todas las raciones)</label><textarea id="ff-ing" placeholder="300 g de pechuga de pollo&#10;150 g de arroz basmati&#10;1 calabacín"></textarea></div>
+      <div class="field"><label for="ff-steps">Cómo se hace (un paso por línea)</label><textarea id="ff-steps" placeholder="Sofríe el pollo 5 min…"></textarea></div>
+      <div class="field"><label for="ff-kcal">Kcal por ración (si las sabes)</label><input id="ff-kcal" inputmode="numeric" placeholder="opcional"></div>
+      <p class="muted" style="margin:0;font-size:13px">${CLOUD_ENABLED?"La IA la ordena, calcula calorías y macros por ración y os dice si le conviene a Sofía, sin cambiar vuestra receta.":"Se guarda tal cual."}</p>
+      <div class="row"><button class="btn me">Guardar en favoritas</button></div>
+    </form></div></div>`;
+}
+// Receta a mano sin IA: cantidades por ración a partir de líneas tipo «300 g de pollo»
+function manualDish(r){
+  const n=Math.max(1,parseInt(r.raciones)||1), U={g:"g",gr:"g",gramos:"g",kg:"kg",ml:"ml",l:"l",litro:"l",litros:"l",ud:"ud",uds:"ud",unidad:"ud",unidades:"ud"};
+  const cap=t=>t?t[0].toUpperCase()+t.slice(1):t;
+  const ing=(r.ingredientes||"").split(/\n/).map(l=>l.trim()).filter(Boolean).map(l=>{
+    const m=l.match(/^(\d+(?:[.,]\d+)?)\s*([a-zA-Záéíóúñ]+)?\s*(?:de\s+)?(.*)$/);
+    if(!m) return [cap(l),1,"pizca","Despensa"];
+    let q=parseFloat(m[1].replace(",","."))/n, u=U[(m[2]||"").toLowerCase()], name=m[3];
+    if(!u){ name=((m[2]||"")+" "+m[3]).trim(); u="ud"; }
+    if(u==="kg"){ q*=1000; u="g"; } if(u==="l"){ q*=1000; u="ml"; }
+    return [cap(name)||l, Math.round(q*10)/10, u, "Despensa"]; });
+  return {slot:r.franja,name:r.nombre,kcal:parseInt(r.kcal)||0,p:0,c:0,g:0,f:0,time:r.tiempo||"",tool:r.aparato||"",ing,
+    steps:(r.pasos||"").split(/\n+/).map(t=>t.trim()).filter(Boolean),why:"",micro:"",sofia:""};
+}
 
 // ---------- Comidas de tupper (batch cooking) ----------
 function tupperInfo(){ return {dias:S.prefs.tupper?[...S.prefs.tupperDays].sort():[]}; }
@@ -1081,6 +1174,7 @@ function openDish(id,i,slot){
       <div class="tags"><span class="tag">${esc(x.tool)}</span><span class="tag">${esc(x.time)}</span>${x.ai?'<span class="tag ai">Creado por IA</span>':'<span class="tag ok">Sin ingredientes vetados</span>'}</div></div>
       <button class="icon-btn" data-close aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div class="stack" style="margin-top:14px">
+      <div class="row"><button class="btn sm ${favIdOf(x.name)?"fav":"ghost"}" id="fav-toggle" data-src="${id}">${favIdOf(x.name)?"❤️ En favoritas":"🤍 Guardar en favoritas"}</button></div>
       <div class="split"><div class="who-kcal c"><b class="num">${fmt(r0(x.kcal*fc))} kcal</b><span>Ración Carlos (×${fc.toFixed(2).replace(".",",")})</span></div>
         <div class="who-kcal s"><b class="num">${fmt(r0(x.kcal*fs))} kcal</b><span>Ración Sofía (×${fs.toFixed(2).replace(".",",")})</span></div></div>
       <div class="bar">${seg(x.p*4,"var(--carlos)")}${seg(x.c*4,"var(--sun)")}${seg(x.g*9,"var(--sofia)")}</div>
@@ -1096,8 +1190,11 @@ function openDish(id,i,slot){
       ${dayDate(i)<=TODAY_ISO?`<div class="note stack"><div><h3>¿${esc(S.profiles[S.person].name)} ha comido otra cosa?</h3><p class="muted">Cuéntalo y queda registrado en lugar de este plato: ${CLOUD_ENABLED?"la IA calcula lo que has comido y ":""}se reajustan tus raciones del resto del día.</p></div>
         <div class="field"><label for="eat-q">Qué has comido y cuánto</label><input id="eat-q" placeholder="«Bocadillo de tortilla y una caña»"></div>
         <div class="row"><button class="btn me sm" data-eat="${i}" data-slot="${slot}">Registrar lo que he comido</button></div></div>`:""}
-      <div class="stack"><div class="field"><label for="swap-q">¿Qué cambio quieres? (opcional)</label><input id="swap-q" placeholder="«Sin horno», «más proteína», «algo de cuchara»…"></div>
-      <div class="row"><button class="btn me" data-swap="${id}" data-day="${i}" data-slot="${slot}">Cambiar este plato${CLOUD_ENABLED?" con IA":""}</button></div></div>
+      <div class="note stack"><h3>Cambiar este plato</h3>
+        ${Object.keys(S.favs).length?`<div class="field"><label for="fav-pick">Por una receta favorita</label><div class="favrow"><select id="fav-pick">${favOptions(slot)}</select><button class="btn sm" id="fav-swap" data-day="${i}" data-slot="${slot}">Poner</button></div></div>`
+          :`<p class="muted" style="margin:0;font-size:13px">Guarda platos en favoritas (❤️) y podrás elegirlos aquí para sustituir este.</p>`}
+      <div class="stack"><div class="field"><label for="swap-q">O pide a la IA otro plato (opcional)</label><input id="swap-q" placeholder="«Sin horno», «más proteína», «algo de cuchara»…"></div>
+      <div class="row"><button class="btn me" data-swap="${id}" data-day="${i}" data-slot="${slot}">Cambiar este plato${CLOUD_ENABLED?" con IA":""}</button></div></div></div>
     </div></div></div>`;
 }
 let VIEWER=null, currentEx=null;
@@ -1288,7 +1385,7 @@ function sharePdf(){
 const CLOUD_ENABLED = false; // en index.html se activa automáticamente
 const SUPA_URL = "https://jlkjvopynizxpvaxwdqr.supabase.co";
 const SUPA_KEY = "sb_publishable_r90i4SuHTzwdnfrcdOOM2Q_Vqjc-Z4J"; // clave pública: la seguridad la ponen las reglas RLS
-const SHARED_KEYS = ["week","shop","extras","done","profiles","dishes","sessions","eaten","prefs","plan","weekStart"];
+const SHARED_KEYS = ["week","shop","extras","done","profiles","dishes","sessions","eaten","prefs","plan","weekStart","favs"];
 let sb=null, ME=null; const timers={};
 function pushKey(k,now){
   if(!sb||!ME) return; clearTimeout(timers[k]);
@@ -1376,11 +1473,11 @@ document.addEventListener("click",e=>{
 });
 
 // ---------- Render ----------
-const VIEWS={hoy:vHoy,menu:vMenu,mes:vMes,compra:vCompra,entreno:vEntreno,progreso:vProgreso,perfil:vPerfil};
+const VIEWS={hoy:vHoy,menu:vMenu,mes:vMes,favs:vFavs,compra:vCompra,entreno:vEntreno,progreso:vProgreso,perfil:vPerfil};
 function render(){
   document.body.classList.toggle("is-sofia",S.person==="sofia");
   document.querySelectorAll(".who button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.p===S.person));
-  document.querySelectorAll(".nav button").forEach(b=>{ if(b.dataset.v===(S.view==="mes"?"menu":S.view)) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
+  document.querySelectorAll(".nav button").forEach(b=>{ if(b.dataset.v===(["mes","favs"].includes(S.view)?"menu":S.view)) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
   $("#view").innerHTML=VIEWS[S.view]();
   save();
 }
@@ -1424,6 +1521,19 @@ document.addEventListener("click",e=>{
   const mo=t.closest("[data-moff]"); if(mo){ S.monthOff=(S.monthOff||0)+ +mo.dataset.moff; render(); return; }
   const gw=t.closest("[data-genweek]"); if(gw){ generateWeek(gw.dataset.genweek,false); return; }
   const od=t.closest("[data-openday]"); if(od){ S.day=+od.dataset.openday; closeSheet(); go("menu"); return; }
+  if(t.closest("#fav-toggle")){ const b=t.closest("#fav-toggle"), x=dish(b.dataset.src), fid=favIdOf(x.name);
+    if(fid){ delete S.favs[fid]; pushKey("favs",true); b.className="btn sm ghost"; b.textContent="🤍 Guardar en favoritas"; toast("Quitada de favoritas."); }
+    else { addFav({...x}); b.className="btn sm fav"; b.textContent="❤️ En favoritas"; toast("Guardada en favoritas: la tenéis en Menú → Favoritas."); }
+    return; }
+  if(t.closest("#fav-swap")){ const b=t.closest("#fav-swap"), v=$("#fav-pick")?.value; if(v) placeFav(v,+b.dataset.day,b.dataset.slot); return; }
+  const ff=t.closest("[data-favflt]"); if(ff){ S.favFilter=ff.dataset.favflt; render(); return; }
+  if(t.closest("#fav-new")){ openFavForm(); return; }
+  const fo=t.closest("[data-favopen]"); if(fo){ openFav(fo.dataset.favopen); return; }
+  if(t.closest("#fp-place")){ placeFav(t.closest("#fp-place").dataset.fav,+$("#fp-day").value,$("#fp-slot").value); return; }
+  if(t.closest("#fav-del")){ const b=t.closest("#fav-del");
+    if(b.dataset.armed){ delete S.favs[b.dataset.fav]; pushKey("favs",true); closeSheet(); render(); toast("Receta quitada de favoritas."); }
+    else { b.dataset.armed="1"; b.textContent="Pulsa otra vez para quitarla"; }
+    return; }
   if(t.closest("#toast-act")&&toast.act){ const a=toast.act; $("#toast-root").innerHTML=""; toast.act=null; a.fn(); return; }
   if(t.closest("#ai-day")){ aiChanges($("#ai-q")?.value.trim()||"",["des","com","cen","sna"].map(franja=>({dia:S.day,franja}))); return; }
   const eb=t.closest("[data-eat]"); if(eb){ const i=+eb.dataset.eat, slot=eb.dataset.slot, p=S.person, desc=$("#eat-q").value.trim();
@@ -1476,7 +1586,7 @@ document.addEventListener("click",e=>{
     pr.activity=parseFloat($("#pf-act").value); pr.pace=parseFloat($("#pf-pace").value);
     pushKey("profiles"); render(); toast("Perfil guardado. Calorías y raciones recalculadas."); return; }
   if(t.closest("#pf-reset")){ const b=t.closest("#pf-reset");
-    if(b.dataset.armed){ const D=JSON.parse(JSON.stringify(DEFAULT_STATE)); SHARED_KEYS.filter(k=>!["eaten","weekStart","plan"].includes(k)).forEach(k=>{S[k]=D[k]; pushKey(k,true);}); render(); toast("Menú, lista, entrenos y perfiles restaurados. Pesadas, síntomas y comidas registradas se conservan."); }
+    if(b.dataset.armed){ const D=JSON.parse(JSON.stringify(DEFAULT_STATE)); SHARED_KEYS.filter(k=>!["eaten","weekStart","plan","favs"].includes(k)).forEach(k=>{S[k]=D[k]; pushKey(k,true);}); render(); toast("Menú, lista, entrenos y perfiles restaurados. Pesadas, síntomas y comidas registradas se conservan."); }
     else { b.dataset.armed="1"; b.textContent="Pulsa otra vez para confirmar"; }
     return; }
 });
@@ -1494,6 +1604,19 @@ document.addEventListener("submit",e=>{
     S.logs = S.logs.filter(l=>!(l.p===p && l.d===TODAY_ISO));
     const rec={p,d:TODAY_ISO,w,bf:(bf==null||isNaN(bf))?null:bf}; S.logs.push(rec); cloudLog(rec);
     render(); toast(`Guardado: ${w.toLocaleString("es-ES")} kg para ${S.profiles[p].name}.`); }
+  if(f.id==="favform"){
+    const r={nombre:$("#ff-name").value.trim(),franja:$("#ff-slot").value,raciones:$("#ff-rac").value,tiempo:$("#ff-time").value.trim(),aparato:$("#ff-tool").value,
+      ingredientes:$("#ff-ing").value.trim(),pasos:$("#ff-steps").value.trim(),kcal:$("#ff-kcal").value.trim()};
+    if(!r.nombre){ toast("Ponle un nombre a la receta."); return; }
+    (async()=>{
+      let d=null;
+      if(CLOUD_ENABLED){ const res=await askAI({accion:"receta",...r}); d=res?.dish||null; if(!d) toast("La IA no ha podido completarla: se guarda tal cual la escribiste."); }
+      d=d||manualDish(r);
+      if(!d.time) d.time=r.tiempo; if(r.aparato) d.tool=r.aparato;
+      addFav({...d,name:r.nombre,slot:r.franja,mine:true});
+      closeSheet(); S.favFilter="all"; if(S.view!=="favs") S.view="favs"; render(); toast(`«${r.nombre}» guardada en favoritas.`);
+    })();
+    return; }
   if(f.id==="add-form"){ const v=$("#add-q").value.trim(); if(v){ S.extras.push(v); pushKey("extras"); render(); } }
   if(f.id==="ai-form"){ const peticion=$("#ai-q").value.trim();
     if(!peticion){ toast("Dile qué cambiar: «la cena del martes», «rehaz el jueves»…"); return; }

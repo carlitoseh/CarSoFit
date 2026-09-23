@@ -304,6 +304,22 @@ En "nota", 1-2 frases amables: valoración según su salud y objetivo (${foco}) 
       return json({ model, comido: { name: out.name, kcal: out.kcal, p: out.p, c: out.c, g: out.g, f: out.f, nota: out.nota } });
     }
 
+    // Receta propia añadida a mano: se pasa al formato de la app sin cambiar el plato
+    if (body.accion === "receta") {
+      const franja = FR[body.franja] ? body.franja : "com";
+      const prompt = `${ctx}
+Esta es una receta propia de la pareja. Pásala al formato de la app SIN cambiar el plato: mismos ingredientes y misma elaboración.
+Nombre: ${body.nombre}
+Franja: ${FR[franja]}
+Raciones que salen: ${body.raciones || 2}
+Ingredientes (para todas las raciones): ${body.ingredientes || "(no indicados: dedúcelos del nombre)"}
+Elaboración: ${body.pasos || "(no indicada: propón una sencilla)"}
+${body.tiempo ? `Tiempo: ${body.tiempo}. ` : ""}${body.aparato ? `Aparato: ${body.aparato}.` : ""}
+Divide las cantidades para UNA ración. Estima kcal y macros por ración${body.kcal ? ` (ellos calculan unas ${body.kcal} kcal por ración)` : ""}. Pasos en 2-5 frases con programas concretos del aparato. En "sofia", di con sinceridad si le conviene (fructosa, polioles, cebolla o ajo, crudo) y cómo adaptarla.`;
+      const { model, out } = await gemini(prompt, DISH_SCHEMA, 4096, 45000, deadline, 0.3);
+      return json({ model, dish: sinTupper(toApp(out, franja)) });
+    }
+
     if (body.accion === "plato") {
       const prompt = `${ctx}
 Sustituye este plato del ${body.dia} (${body.franjaNombre}): «${body.actual}».
